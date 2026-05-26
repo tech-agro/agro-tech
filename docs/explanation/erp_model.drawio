@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="AgroTech CampoVerde ERP" version="24.0.0">
+
+  <!-- =================================================================== -->
+  <!-- PÁGINA 1 — ARQUITETURA MODULAR DO ERP (visão lógica)                -->
+  <!-- =================================================================== -->
+  <diagram id="erp-architecture" name="1. Arquitetura Modular">
+    <mxGraphModel dx="2400" dy="1700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2600" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TÍTULO -->
+        <mxCell id="title" value="ERP AgroTech CampoVerde — Arquitetura Modular e Integração entre Setores" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=26;fontStyle=1;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="600" y="20" width="1400" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Diagnóstico organizacional transformado em arquitetura lógica de ERP — 8 módulos integrados por barramento central" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=2;fontColor=#33691E;" vertex="1" parent="1">
+          <mxGeometry x="500" y="60" width="1600" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ============ CAMADA DE APRESENTAÇÃO ============ -->
+        <mxCell id="layer-ui" value="CAMADA DE APRESENTAÇÃO  (Streamlit / Web UI / Mobile / IoT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D47A1;strokeColor=#0D47A1;fontSize=15;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="110" width="2480" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ui-web"    value="Web App&#xa;Gestores / Diretoria"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="90"   y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-mobile" value="App Mobile&#xa;Equipe de Campo"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="335"  y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-portal" value="Portal Fornecedor&#xa;e Cliente"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="580"  y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-iot"    value="Coletores IoT&#xa;Sensores / Balança" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="825"  y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-dash"   value="Dashboards BI&#xa;Diretoria"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1070" y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-relat"  value="Relatórios&#xa;Gerenciais"           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1315" y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-api"    value="API REST&#xa;Integrações externas"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1560" y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-auth"   value="Login &amp; SSO&#xa;Autenticação"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1805" y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-admin"  value="Console&#xa;Administrativo"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="2050" y="145" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="ui-notif"  value="Notificações&#xa;E-mail/SMS/Push"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontSize=11;fontColor=#0D47A1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="2295" y="145" width="220" height="55" as="geometry"/></mxCell>
+
+        <!-- ============ NÚCLEO DO ERP ============ -->
+        <mxCell id="core" value="NÚCLEO ERP&#xa;AgroTech CampoVerde&#xa;━━━━━━━━━━&#xa;Barramento de Integração&#xa;Event Bus / API Gateway&#xa;Motor de Regras" style="rhombus;whiteSpace=wrap;html=1;fillColor=#E65100;strokeColor=#BF360C;fontSize=14;fontStyle=1;fontColor=#FFFFFF;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="760" width="480" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- =================================================== -->
+        <!-- MÓDULOS — LINHA SUPERIOR (Produção, Estoque, Compras, Manutenção, Logística) -->
+        <!-- =================================================== -->
+
+        <!-- M1 — PRODUÇÃO AGRÍCOLA -->
+        <mxCell id="m1" value="1. PRODUÇÃO AGRÍCOLA" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#1B5E20;strokeColor=#1B5E20;fontColor=#FFFFFF;swimlaneFillColor=#F1F8E9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m1obj" value="Objetivo: gerir o ciclo completo da safra e operação do campo." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#1B5E20;" vertex="1" parent="m1"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m1fun" value="Funcionalidades:&#xa;• Cadastro de safras / talhões&#xa;• Plantio, manejo e colheita&#xa;• Rastreabilidade lote → talhão&#xa;• Custos por safra/talhão&#xa;• Planejamento operacional&#xa;• Apontamento de produtividade&#xa;• Controle agronômico (pragas/clima)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m1"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m1imp" value="Impactos: baixa insumos no Estoque, gera OS para Manutenção, alimenta Comercial e BI." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m1"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- M2 — ESTOQUE -->
+        <mxCell id="m2" value="2. ESTOQUE" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#E65100;strokeColor=#E65100;fontColor=#FFFFFF;swimlaneFillColor=#FFF3E0;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m2obj" value="Objetivo: controlar insumos, sementes, defensivos e grãos colhidos." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#BF360C;" vertex="1" parent="m2"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m2fun" value="Funcionalidades:&#xa;• Entrada / saída de produtos&#xa;• Controle de saldo e lotes&#xa;• Estoque mínimo (alerta)&#xa;• Inventário e ajustes&#xa;• Movimentação entre armazéns&#xa;• Rastreamento de perdas&#xa;• Histórico de movimentações" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m2"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m2imp" value="Impactos: atualiza saldo, dispara reposição em Compras, bloqueia venda sem saldo no Comercial." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m2"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- M3 — COMPRAS -->
+        <mxCell id="m3" value="3. COMPRAS" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#BF360C;strokeColor=#BF360C;fontColor=#FFFFFF;swimlaneFillColor=#FBE9E7;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="880" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m3obj" value="Objetivo: aquisição de insumos, maquinário e gestão de fornecedores." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#BF360C;" vertex="1" parent="m3"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m3fun" value="Funcionalidades:&#xa;• Cadastro de fornecedores&#xa;• Cotação e ordem de compra&#xa;• Aprovação por alçada&#xa;• Recebimento e nota fiscal&#xa;• Conferência de pedido&#xa;• Avaliação de fornecedor&#xa;• Solicitação automática (estoque mín.)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m3"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m3imp" value="Impactos: entrada no Estoque após recebimento, gera título a pagar no Financeiro." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m3"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- M4 — MANUTENÇÃO -->
+        <mxCell id="m4" value="4. MANUTENÇÃO" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#311B92;strokeColor=#311B92;fontColor=#FFFFFF;swimlaneFillColor=#EDE7F6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m4obj" value="Objetivo: gerir maquinário e frota agrícola, preventiva e corretiva." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#311B92;" vertex="1" parent="m4"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m4fun" value="Funcionalidades:&#xa;• Cadastro de máquinas e frota&#xa;• Ordens de serviço (OS)&#xa;• Plano de manutenção preventiva&#xa;• Histórico de manutenções&#xa;• Disponibilidade de equipamentos&#xa;• Consumo de peças e horímetro&#xa;• Indicadores (MTBF / MTTR)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m4"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m4imp" value="Impactos: consome peças do Estoque, gera compras emergenciais, custos para o Financeiro." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m4"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- M5 — LOGÍSTICA -->
+        <mxCell id="m5" value="5. LOGÍSTICA" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#004D40;strokeColor=#004D40;fontColor=#FFFFFF;swimlaneFillColor=#E0F2F1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m5obj" value="Objetivo: distribuição e transporte da produção até o cliente." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#004D40;" vertex="1" parent="m5"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m5fun" value="Funcionalidades:&#xa;• Planejamento de rotas&#xa;• Gestão de cargas e pesagem&#xa;• Rastreamento de entregas (GPS)&#xa;• Romaneios e CT-e&#xa;• Controle de frota e motoristas&#xa;• Confirmação de entrega&#xa;• Indicadores de eficiência logística" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m5"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m5imp" value="Impactos: baixa estoque do produto vendido, fecha pedido no Comercial, alimenta BI." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m5"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- M6 — COMERCIAL -->
+        <mxCell id="m6" value="6. COMERCIAL" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#880E4F;strokeColor=#880E4F;fontColor=#FFFFFF;swimlaneFillColor=#FCE4EC;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="2150" y="260" width="380" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m6obj" value="Objetivo: gerir vendas, contratos e precificação dos grãos." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#880E4F;" vertex="1" parent="m6"><mxGeometry x="10" y="38" width="360" height="35" as="geometry"/></mxCell>
+        <mxCell id="m6fun" value="Funcionalidades:&#xa;• Cadastro de clientes (CRM)&#xa;• Pedido de venda e contratos&#xa;• Tabela de preços / cotação grãos&#xa;• Política comercial e descontos&#xa;• Reserva de estoque&#xa;• Faturamento e emissão de NF&#xa;• Funil e histórico comercial" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m6"><mxGeometry x="10" y="75" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="m6imp" value="Impactos: reserva/baixa Estoque, gera entrega na Logística, título a receber no Financeiro." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m6"><mxGeometry x="10" y="220" width="360" height="60" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- MÓDULOS — LINHA INFERIOR (Financeiro, Inteligência)  -->
+        <!-- =================================================== -->
+
+        <!-- M7 — FINANCEIRO -->
+        <mxCell id="m7" value="7. FINANCEIRO" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#F57F17;strokeColor=#F57F17;fontColor=#FFFFFF;swimlaneFillColor=#FFFDE7;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1020" width="500" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m7obj" value="Objetivo: controlar fluxo de caixa, custos e resultado da empresa." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#F57F17;" vertex="1" parent="m7"><mxGeometry x="10" y="38" width="480" height="35" as="geometry"/></mxCell>
+        <mxCell id="m7fun" value="Funcionalidades:&#xa;• Contas a pagar e a receber&#xa;• Fluxo de caixa diário / projetado&#xa;• Conciliação bancária&#xa;• Centros de custo por safra/talhão&#xa;• Controle orçamentário&#xa;• Custos de produção&#xa;• Apuração de resultado (DRE)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m7"><mxGeometry x="10" y="75" width="480" height="140" as="geometry"/></mxCell>
+        <mxCell id="m7imp" value="Impactos: confirma pagamentos, atualiza status de títulos, alimenta indicadores em Inteligência." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m7"><mxGeometry x="10" y="220" width="480" height="60" as="geometry"/></mxCell>
+
+        <!-- M8 — INTELIGÊNCIA -->
+        <mxCell id="m8" value="8. INTELIGÊNCIA (BI &amp; ML)" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#4A148C;strokeColor=#4A148C;fontColor=#FFFFFF;swimlaneFillColor=#F3E5F5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="2030" y="1020" width="500" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="m8obj" value="Objetivo: prover dashboards, indicadores e projeções via ML." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#4A148C;" vertex="1" parent="m8"><mxGeometry x="10" y="38" width="480" height="35" as="geometry"/></mxCell>
+        <mxCell id="m8fun" value="Funcionalidades:&#xa;• Dashboards executivos (KPIs)&#xa;• Projeção de safra (ML)&#xa;• Previsão de consumo de insumos&#xa;• Previsão de demanda e preços&#xa;• Análise de eficiência logística&#xa;• Indicadores financeiros e custos&#xa;• Data warehouse / ETL" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#000000;" vertex="1" parent="m8"><mxGeometry x="10" y="75" width="480" height="140" as="geometry"/></mxCell>
+        <mxCell id="m8imp" value="Impactos: consome dados de todos os módulos, gera alertas estratégicos e recomendações." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=9;fontStyle=2;fontColor=#B71C1C;" vertex="1" parent="m8"><mxGeometry x="10" y="220" width="480" height="60" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- SERVIÇOS COMPARTILHADOS                              -->
+        <!-- =================================================== -->
+        <mxCell id="shared" value="SERVIÇOS COMPARTILHADOS" style="swimlane;fontSize=13;fontStyle=1;startSize=32;fillColor=#263238;strokeColor=#263238;fontColor=#FFFFFF;swimlaneFillColor=#ECEFF1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1020" width="1390" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="sv-auth"   value="Autenticação &amp; RBAC&#xa;(perfis e permissões)"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="15"  y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-log"    value="Logs &amp; Auditoria&#xa;(LGPD / rastreio)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="225" y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-notif"  value="Notificações&#xa;(e-mail / SMS / push)"            style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="435" y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-cad"    value="Cadastros Únicos&#xa;(pessoas, produtos, locais)"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="645" y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-doc"    value="Gestão de Documentos&#xa;(NF, contratos, CT-e)"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="855" y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-backup" value="Backup &amp; Segurança&#xa;(criptografia)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="1065" y="50" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-int"    value="Integrações Externas&#xa;(SEFAZ, bancos, clima)"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="15"  y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-config" value="Parâmetros &amp; Configuração&#xa;(regras de negócio)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="225" y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-rules"  value="Motor de Regras&#xa;(workflow e aprovações)"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="435" y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-sched"  value="Job Scheduler&#xa;(rotinas e ETL)"                  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="645" y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-cache"  value="Cache &amp; Filas&#xa;(Redis / RabbitMQ)"           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="855" y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-i18n"   value="i18n &amp; Acessibilidade&#xa;(idiomas, perfis)"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;fontColor=#263238;fontStyle=1;" vertex="1" parent="shared"><mxGeometry x="1065" y="130" width="200" height="65" as="geometry"/></mxCell>
+        <mxCell id="sv-info"   value="Estes serviços são consumidos por TODOS os módulos do ERP" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#FFFFFF;fillColor=#37474F;strokeColor=#263238;rounded=1;" vertex="1" parent="shared"><mxGeometry x="15" y="210" width="1250" height="35" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- CAMADA DE PERSISTÊNCIA                               -->
+        <!-- =================================================== -->
+        <mxCell id="layer-data" value="CAMADA DE PERSISTÊNCIA DE DADOS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1B5E20;strokeColor=#1B5E20;fontSize=15;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1360" width="2480" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="db-op"     value="Banco Operacional&#xa;PostgreSQL&#xa;(Transações OLTP)"      style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="100"  y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-dw"     value="Data Warehouse&#xa;(BI / OLAP)&#xa;Histórico analítico"     style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="370"  y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-doc"    value="Storage de Arquivos&#xa;S3 / MinIO&#xa;(NF, contratos)"     style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="640"  y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-iot"    value="Time-Series DB&#xa;InfluxDB&#xa;(IoT / sensores / clima)"   style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="910"  y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-cache"  value="Cache &amp; Filas&#xa;Redis + RabbitMQ&#xa;(eventos)"        style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1180" y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-ml"     value="Repositório ML&#xa;MLflow&#xa;(modelos &amp; features)"     style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1450" y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-log"    value="Logs &amp; Auditoria&#xa;ELK Stack&#xa;(trilha de auditoria)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1720" y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-backup" value="Backup&#xa;(snapshots diários)&#xa;Disaster Recovery"      style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#A5D6A7;strokeColor=#1B5E20;fontSize=11;fontColor=#1B5E20;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1990" y="1405" width="240" height="130" as="geometry"/></mxCell>
+        <mxCell id="db-ext"    value="APIs Externas&#xa;SEFAZ • Bancos&#xa;Clima • Cotações"     style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;fontColor=#BF360C;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="2260" y="1405" width="240" height="130" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- REGRAS DE NEGÓCIO                                    -->
+        <!-- =================================================== -->
+        <mxCell id="rules" value="REGRAS DE NEGÓCIO PRINCIPAIS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6F00;strokeColor=#E65100;fontSize=14;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1590" width="2480" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="ESTOQUE&#xa;• Não permitir saída sem saldo&#xa;• Estoque mínimo gera alerta e SC&#xa;• Inventário bloqueia movimentações&#xa;• Lote rastreável por safra/talhão" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="80"   y="1625" width="395" height="140" as="geometry"/></mxCell>
+        <mxCell id="r2" value="FINANCEIRO&#xa;• Só Financeiro confirma pagamento&#xa;• Títulos vencidos mudam status auto&#xa;• Inadimplência bloqueia venda a prazo&#xa;• Centro de custo obrigatório por safra" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="495"  y="1625" width="395" height="140" as="geometry"/></mxCell>
+        <mxCell id="r3" value="PRODUÇÃO &amp; MANUTENÇÃO&#xa;• OS só finaliza após execução completa&#xa;• Peças consumidas baixam Estoque auto&#xa;• Apontamento de safra obrigatório&#xa;• Manutenção preventiva por horímetro" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="910"  y="1625" width="395" height="140" as="geometry"/></mxCell>
+        <mxCell id="r4" value="COMERCIAL &amp; LOGÍSTICA&#xa;• Pedido reserva estoque ao confirmar&#xa;• Entrega só após romaneio gerado&#xa;• Faturamento exige aprovação financeira&#xa;• Preço mínimo por política comercial" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="1325" y="1625" width="395" height="140" as="geometry"/></mxCell>
+        <mxCell id="r5" value="USUÁRIOS &amp; SEGURANÇA&#xa;• Apenas gerente cancela operação&#xa;• Permissões variam por perfil (RBAC)&#xa;• Logs registram alterações críticas&#xa;• Backup diário e senha forte" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="1740" y="1625" width="395" height="140" as="geometry"/></mxCell>
+        <mxCell id="r6" value="INTELIGÊNCIA (BI / ML)&#xa;• Projeções recalculadas diariamente&#xa;• Alertas estratégicos para diretoria&#xa;• Dados anonimizados para ML (LGPD)&#xa;• KPI consolidado por safra/talhão" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=#FFFFFF;strokeColor=#E65100;rounded=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="2155" y="1625" width="385" height="140" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- CONEXÕES — UI → NÚCLEO (uma por componente)          -->
+        <!-- =================================================== -->
+        <mxCell id="e-uiweb-core"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.1;entryY=0;" edge="1" parent="1" source="ui-web"    target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uimobile-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="ui-mobile" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uiportal-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.4;entryY=0;" edge="1" parent="1" source="ui-portal" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uiiot-core"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="ui-iot"    target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uidash-core"   style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.6;entryY=0;" edge="1" parent="1" source="ui-dash"   target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uirelat-core"  style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.7;entryY=0;" edge="1" parent="1" source="ui-relat"  target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uiapi-core"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1" source="ui-api"    target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uiauth-core"   style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.9;entryY=0;" edge="1" parent="1" source="ui-auth"   target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uiadmin-core"  style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=0.95;entryY=0;" edge="1" parent="1" source="ui-admin"  target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-uinotif-core"  style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#0D47A1;strokeWidth=1;exitX=0.5;exitY=1;entryX=1;entryY=0.1;" edge="1" parent="1" source="ui-notif"  target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- CONEXÕES — MÓDULOS ↔ NÚCLEO (síncronas via barramento) -->
+        <!-- =================================================== -->
+        <mxCell id="e-m1-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="m1" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m2-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#E65100;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="1" source="m2" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m3-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#BF360C;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m3" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m4-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#311B92;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" edge="1" parent="1" source="m4" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m5-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#004D40;strokeWidth=2.5;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" parent="1" source="m5" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m6-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#880E4F;strokeWidth=2.5;exitX=0;exitY=1;entryX=1;entryY=0.7;" edge="1" parent="1" source="m6" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m7-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#F57F17;strokeWidth=2.5;exitX=1;exitY=0;entryX=0;entryY=0.7;" edge="1" parent="1" source="m7" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-m8-core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#4A148C;strokeWidth=2.5;exitX=0;exitY=0;entryX=1;entryY=0.7;" edge="1" parent="1" source="m8" target="core"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- CONEXÕES — NÚCLEO ↔ SERVIÇOS COMPARTILHADOS         -->
+        <!-- =================================================== -->
+        <mxCell id="e-core-shared" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#263238;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="shared"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- CONEXÕES — NÚCLEO ↔ PERSISTÊNCIA                    -->
+        <!-- =================================================== -->
+        <mxCell id="e-core-dbop"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.3;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-op"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-core-dbdw"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.4;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-dw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-core-dbdoc"   style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-doc"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-core-dbiot"   style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.6;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-iot"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-core-dbcache" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.7;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-cache"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-core-dbml"    style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;startArrow=classic;strokeColor=#1B5E20;strokeWidth=2;exitX=0.8;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="core" target="db-ml"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- INTEGRAÇÕES DIRETAS ENTRE MÓDULOS (impactos automáticos) -->
+        <!-- =================================================== -->
+        <mxCell id="i-m2-m3"  value="reposição auto"          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#BF360C;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" edge="1" parent="1" source="m2" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m3-m2"  value="entrada insumos"         style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#E65100;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=0;exitY=0.7;entryX=1;entryY=0.7;" edge="1" parent="1" source="m3" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m1-m2"  value="consome insumos / entrega grãos" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#1B5E20;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="m1" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m1-m4"  value="solicita OS de maquinário" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#1B5E20;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=1;exitY=0.85;entryX=0;entryY=0.85;" edge="1" parent="1" source="m1" target="m4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m4-m2"  value="consome peças"           style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#311B92;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=0;exitY=0.15;entryX=1;entryY=0.15;" edge="1" parent="1" source="m4" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m6-m2"  value="reserva / baixa estoque" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#880E4F;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=0;exitY=0.4;entryX=1;entryY=0.4;" edge="1" parent="1" source="m6" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="i-m6-m5"  value="gera romaneio"           style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#880E4F;strokeWidth=1.5;dashed=1;fontSize=9;fontStyle=2;exitX=0;exitY=0.6;entryX=1;entryY=0.6;" edge="1" parent="1" source="m6" target="m5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- =================================================== -->
+        <!-- LEGENDA                                              -->
+        <!-- =================================================== -->
+        <mxCell id="legend" value="LEGENDA&#xa;━━━━ azul: comunicação UI → Núcleo&#xa;━━━━ colorida: módulo ↔ Núcleo (síncrona via barramento)&#xa;┄┄┄┄ tracejada colorida: integração direta entre módulos (impacto automático)&#xa;◆ Núcleo ERP = barramento de integração (orquestra eventos e regras)" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="60" y="610" width="640" height="120" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- =================================================================== -->
+  <!-- PÁGINA 2 — ORGANIZAÇÃO DO PROJETO (estilo MotoGus / Python+Streamlit) -->
+  <!-- =================================================================== -->
+  <diagram id="erp-structure" name="2. Organização do Projeto (Python/Streamlit)">
+    <mxGraphModel dx="2400" dy="1700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="t2" value="Organização do Projeto ERP AgroTech CampoVerde — Arquitetura Modular (Python + Streamlit)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1600" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2s" value="Estrutura de pastas/arquivos espelhando a arquitetura modular do ERP — separa cada área funcional em diretórios específicos (UI, regras de negócio, banco, utils)." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=2;fontColor=#33691E;" vertex="1" parent="1">
+          <mxGeometry x="200" y="58" width="1600" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- RAIZ -->
+        <mxCell id="root-node" value="📁 agrotech-erp/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1B5E20;strokeColor=#1B5E20;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="110" width="260" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- NÍVEL 1 — pastas principais -->
+        <mxCell id="n1-app"      value="📁 app/&#xa;(Streamlit — UI principal)"             style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D47A1;strokeColor=#0D47A1;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="110" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-modules"  value="📁 modules/&#xa;(módulos operacionais do ERP)"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E65100;strokeColor=#E65100;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="180" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-services" value="📁 services/&#xa;(serviços compartilhados)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#263238;strokeColor=#263238;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="800" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-auth"     value="📁 auth/&#xa;(autenticação &amp; RBAC)"              style="rounded=1;whiteSpace=wrap;html=1;fillColor=#37474F;strokeColor=#37474F;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="870" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-db"       value="📁 database/&#xa;(scripts SQL, migrações, ORM)"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1B5E20;strokeColor=#1B5E20;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="940" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-utils"    value="📁 utils/&#xa;(helpers e funções auxiliares)"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#455A64;strokeColor=#455A64;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="1010" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-tests"    value="📁 tests/&#xa;(testes unitários e integração)"       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6A1B9A;strokeColor=#6A1B9A;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="1080" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-docs"     value="📁 docs/&#xa;(documentação e diagramas)"             style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3E2723;strokeColor=#3E2723;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="1150" width="260" height="50" as="geometry"/></mxCell>
+        <mxCell id="n1-req"      value="📄 requirements.txt&#xa;📄 main.py / .env / README.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;fontColor=#000000;fontSize=11;" vertex="1" parent="1"><mxGeometry x="460" y="1220" width="260" height="50" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 2 — APP -->
+        <mxCell id="app1" value="📄 main.py&#xa;(entrypoint Streamlit)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontColor=#0D47A1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="80"  width="240" height="40" as="geometry"/></mxCell>
+        <mxCell id="app2" value="📁 pages/  (multipage Streamlit)"               style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontColor=#0D47A1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="125" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="app3" value="📁 components/  (widgets reusáveis)"            style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontColor=#0D47A1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="160" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="app4" value="📁 assets/  (CSS, imagens, logo)"               style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#0D47A1;fontColor=#0D47A1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="195" width="240" height="30" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 2 — MODULES (8 módulos) -->
+        <mxCell id="mod-producao"  value="📁 producao_agricola/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1B5E20;strokeColor=#1B5E20;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="245" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-estoque"   value="📁 estoque/"           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E65100;strokeColor=#E65100;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="320" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-compras"   value="📁 compras/"           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BF360C;strokeColor=#BF360C;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="395" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-manut"     value="📁 manutencao/"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#311B92;strokeColor=#311B92;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="470" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-logistica" value="📁 logistica/"         style="rounded=1;whiteSpace=wrap;html=1;fillColor=#004D40;strokeColor=#004D40;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="545" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-comercial" value="📁 comercial/"         style="rounded=1;whiteSpace=wrap;html=1;fillColor=#880E4F;strokeColor=#880E4F;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="620" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-finance"   value="📁 financeiro/"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F57F17;strokeColor=#F57F17;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="695" width="240" height="35" as="geometry"/></mxCell>
+        <mxCell id="mod-bi"        value="📁 inteligencia/"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4A148C;strokeColor=#4A148C;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="770" width="240" height="35" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 3 — Detalhe interno de cada módulo (mesma estrutura padrão) -->
+        <mxCell id="mod-tpl" value="📦 Estrutura padrão de cada módulo:&#xa;  📄 ui.py            → telas Streamlit do módulo&#xa;  📄 service.py       → regras de negócio (lógica)&#xa;  📄 repository.py    → acesso ao banco (CRUD)&#xa;  📄 models.py        → modelos / entidades&#xa;  📄 rules.py         → validações e regras específicas&#xa;  📄 events.py        → eventos publicados no barramento&#xa;  📄 __init__.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FF6F00;fontColor=#000000;fontSize=11;align=left;verticalAlign=top;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="245" width="420" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="mod-tpl-arrow" value="Aplicado a TODOS&#xa;os 8 módulos →" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontStyle=2;fontColor=#BF360C;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="450" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Exemplo concreto: estoque/ -->
+        <mxCell id="ex-estoque" value="Exemplo concreto — modules/estoque/:&#xa;  ui.py              → tela de entrada/saída e inventário&#xa;  service.py         → calcula saldo, valida estoque mínimo&#xa;  repository.py      → SELECT/INSERT/UPDATE em estoque&#xa;  models.py          → Produto, Lote, Movimentacao, Armazem&#xa;  rules.py           → bloquear saída sem saldo, alerta mín.&#xa;  events.py          → publica EstoqueAbaixoMinimo, SaidaConfirmada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontColor=#000000;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="490" width="420" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- NÍVEL 2 — SERVICES -->
+        <mxCell id="srv1" value="📄 event_bus.py  (barramento de eventos)"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="820" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="srv2" value="📄 api_gateway.py  (rotas REST)"                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="855" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="srv3" value="📄 notifications.py  (e-mail/SMS/push)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="890" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="srv4" value="📄 documents.py  (NF, contratos, CT-e)"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="925" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="srv5" value="📄 scheduler.py  (jobs / ETL agendados)"         style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="960" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="srv6" value="📄 external_apis.py  (SEFAZ, bancos, clima)"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;fontColor=#263238;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="995" width="240" height="30" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 2 — AUTH -->
+        <mxCell id="au1" value="📄 login.py  • 📄 rbac.py  • 📄 sessions.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#37474F;fontColor=#37474F;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1050" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="au2" value="📄 permissions.py  • 📄 audit_log.py"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#37474F;fontColor=#37474F;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1085" width="240" height="30" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 2 — DATABASE -->
+        <mxCell id="db1" value="📁 migrations/  (Alembic)"                       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1125" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="db2" value="📁 seeds/  (dados iniciais)"                     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1160" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="db3" value="📄 connection.py  (engine + session)"            style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1195" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="db4" value="📄 base_model.py  (SQLAlchemy Base)"             style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1230" width="240" height="30" as="geometry"/></mxCell>
+
+        <!-- NÍVEL 2 — UTILS -->
+        <mxCell id="ut1" value="📄 formatters.py  • 📄 validators.py  • 📄 dates.py  • 📄 logger.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#455A64;fontColor=#455A64;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1280" width="420" height="30" as="geometry"/></mxCell>
+
+        <!-- LEGENDA / FLUXO INTERNO -->
+        <mxCell id="flow" value="FLUXO INTERNO DE UM MÓDULO (camadas)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=13;fontStyle=1;verticalAlign=top;fontColor=#BF360C;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="110" width="380" height="540" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow-ui"   value="ui.py  (Streamlit)&#xa;Camada de Apresentação"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0D47A1;strokeColor=#0D47A1;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1610" y="155" width="280" height="50" as="geometry"/></mxCell>
+        <mxCell id="flow-svc"  value="service.py  +  rules.py&#xa;Regras de Negócio"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E65100;strokeColor=#E65100;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1610" y="240" width="280" height="50" as="geometry"/></mxCell>
+        <mxCell id="flow-evt"  value="events.py&#xa;Publicação no Event Bus"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#263238;strokeColor=#263238;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1610" y="325" width="280" height="50" as="geometry"/></mxCell>
+        <mxCell id="flow-rep"  value="repository.py  +  models.py&#xa;Acesso ao Banco" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1B5E20;strokeColor=#1B5E20;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1610" y="410" width="280" height="50" as="geometry"/></mxCell>
+        <mxCell id="flow-db"   value="database/  (PostgreSQL / SQLAlchemy)&#xa;Persistência" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#1B5E20;fontColor=#1B5E20;fontSize=11;fontStyle=1;backgroundOutline=1;size=15;" vertex="1" parent="1"><mxGeometry x="1610" y="495" width="280" height="110" as="geometry"/></mxCell>
+
+        <mxCell id="fa1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="flow-ui"  target="flow-svc"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="flow-svc" target="flow-evt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="flow-svc" target="flow-rep"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="flow-rep" target="flow-db"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- CONEXÕES RAIZ → NÍVEL 1 -->
+        <mxCell id="c-root-app"      style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-app"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-modules"  style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-modules"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-services" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-services"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-auth"     style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-auth"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-db"       style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-db"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-utils"    style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-utils"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-tests"    style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-tests"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-docs"     style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-docs"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-root-req"      style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="root-node" target="n1-req"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- CONEXÕES NÍVEL 1 → NÍVEL 2 (app/) -->
+        <mxCell id="c-app-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#0D47A1;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-app" target="app1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-app-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#0D47A1;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-app" target="app2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-app-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#0D47A1;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-app" target="app3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-app-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#0D47A1;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-app" target="app4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- CONEXÕES NÍVEL 1 → NÍVEL 2 (modules/) -->
+        <mxCell id="c-mod-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-producao"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-estoque"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-compras"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-manut"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-logistica"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-comercial"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-finance"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-mod-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#E65100;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-modules" target="mod-bi"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- CONEXÕES NÍVEL 1 → NÍVEL 2 (services/) -->
+        <mxCell id="c-srv-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-srv-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-srv-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-srv-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-srv-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-srv-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#263238;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-services" target="srv6"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- CONEXÕES auth/, database/, utils/ -->
+        <mxCell id="c-au-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#37474F;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-auth" target="au1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-au-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#37474F;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-auth" target="au2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-db-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#1B5E20;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-db" target="db1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-db-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#1B5E20;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-db" target="db2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-db-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#1B5E20;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-db" target="db3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-db-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#1B5E20;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-db" target="db4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="c-ut-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;strokeColor=#455A64;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n1-utils" target="ut1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- LEGENDA INFERIOR -->
+        <mxCell id="leg2" value="OBSERVAÇÕES&#xa;• Cada módulo é independente e se comunica com os demais APENAS via services/event_bus.py (baixo acoplamento).&#xa;• auth/ e services/ são consumidos por TODOS os módulos (serviços compartilhados).&#xa;• database/ centraliza migrações e modelos (camada de persistência única).&#xa;• A organização espelha a arquitetura lógica da Página 1: UI → Núcleo → Módulos → Serviços → Persistência." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fillColor=#FFF8E1;strokeColor=#FF6F00;fontSize=12;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="690" width="840" height="180" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
