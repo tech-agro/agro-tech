@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Agro Tech",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "agro_tech",
+      "Username": "postgres",
+      "PassFile": "/pgpass",
+      "SSLMode": "prefer"
+    }
+  }
+}
