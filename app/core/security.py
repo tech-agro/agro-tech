@@ -1,6 +1,6 @@
 """Utilitarios de seguranca."""
 
-import hashlib
+import secrets
 
-def hash_password(raw_password: str) -> str:
-    return hashlib.sha256(raw_password.encode()).hexdigest()
+def generate_oauth_state() -> str:
+    return secrets.token_urlsafe(32)
