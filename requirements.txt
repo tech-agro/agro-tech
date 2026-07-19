@@ -2,3 +2,9 @@ streamlit
 sqlalchemy
 psycopg[binary]
 python-dotenv
+pydantic
+google-auth
+requests
+fastapi
+uvicorn[standard]
+pyjwt
