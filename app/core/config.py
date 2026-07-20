@@ -17,6 +17,16 @@ class Settings:
     postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
     postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
 
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/callback")
+
+    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-me")
+    jwt_expire_minutes: int = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
+
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:8501")
+    api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")
+
     @property
     def database_url(self) -> str:
         return (
