@@ -210,7 +210,7 @@ CATEGORIA_PRODUTO (
 
 UNIDADE_MEDIDA (
     id_unidade: INT [PK]
-    sigla: STRING
+    sigla: unidade_sigla_enum  -- KG | L | UN | SC | HA | T (nao e texto livre)
     descricao: STRING
 )
 
