@@ -24,9 +24,12 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
+from components.shared.logo.widgets import apply_sidebar_logo
+
 
 def setup_page(title: str, caption: str | None = None) -> None:
     st.set_page_config(page_title=f"{title} | Agro Tech", layout="wide")
+    apply_sidebar_logo()
     st.title(title)
     if caption:
         st.caption(caption)
@@ -86,7 +89,11 @@ def data_table(
     height: int = 360,
     page_size: int = 8,
 ) -> list[dict]:
-    """AgGrid with checkbox selection. Pair with row_actions for the footer."""
+    """AgGrid with checkbox selection. Pair with row_actions for the footer.
+
+    Do not pass theme=\"streamlit\": that string theme stays light and breaks
+    dark mode. Omitting theme lets recent streamlit-aggrid follow Streamlit.
+    """
     builder = GridOptionsBuilder.from_dataframe(df)
     builder.configure_selection("single", use_checkbox=True)
     builder.configure_pagination(
@@ -101,7 +108,6 @@ def data_table(
         update_mode=GridUpdateMode.SELECTION_CHANGED,
         fit_columns_on_grid_load=True,
         height=height,
-        theme="streamlit",
         key=f"{key}_grid",
         reload_data=True,
     )

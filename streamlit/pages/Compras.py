@@ -6,7 +6,6 @@ from datetime import date
 from pathlib import Path
 import sys
 
-# Allow ``components.*`` / ``services.*`` imports (folder is named streamlit/).
 _STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
 if str(_STREAMLIT_ROOT) not in sys.path:
     sys.path.insert(0, str(_STREAMLIT_ROOT))
