@@ -1,4 +1,4 @@
-"""HTTP client used by the Streamlit purchases UI."""
+"""HTTP client for the purchases Streamlit UI → FastAPI."""
 
 from __future__ import annotations
 
