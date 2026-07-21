@@ -1,4 +1,6 @@
 streamlit
+streamlit-aggrid
+streamlit-option-menu
 sqlalchemy
 psycopg[binary]
 python-dotenv

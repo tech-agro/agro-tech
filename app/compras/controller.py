@@ -1,26 +1,202 @@
-"""Recebe requisicoes da interface para o dominio compras."""
+"""HTTP adapter for the purchases domain (domain resources only)."""
 
 from __future__ import annotations
 
-from app.compras.service import ComprasService
+from fastapi import APIRouter, HTTPException, status
 
-class ComprasController:
-    """Adaptador entre interface e service."""
+from app.compras.errors import PurchaseError
+from app.compras.schemas.lookups import (
+    CostCenterOptionSchema,
+    ProductOptionSchema,
+    SupplierOptionSchema,
+)
+from app.compras.schemas.order import (
+    OrderCreateSchema,
+    OrderReadSchema,
+    OrderUpdateSchema,
+)
+from app.compras.schemas.order_item import (
+    OrderItemCreateSchema,
+    OrderItemReadSchema,
+    OrderItemUpdateSchema,
+)
+from app.compras.schemas.purchase import (
+    PurchaseCreateSchema,
+    PurchaseReadSchema,
+    PurchaseUpdateSchema,
+)
+from app.compras.service import PurchaseService
 
-    def __init__(self, service: ComprasService | None = None) -> None:
-        self.service = service or ComprasService()
 
-    def create(self, payload):
-        return self.service.create(payload)
+class PurchaseController:
+    """Exposes Order and Purchase; items are nested under the order."""
 
-    def get_by_id(self, entity_id: int):
-        return self.service.get_by_id(entity_id)
+    def __init__(self, service: PurchaseService | None = None) -> None:
+        self.service = service or PurchaseService()
+        self.router = APIRouter(prefix="/purchases", tags=["purchases"])
+        self._register_routes()
 
-    def list(self, filters=None):
-        return self.service.list(filters)
+    @staticmethod
+    def _map_error(exc: PurchaseError) -> HTTPException:
+        return HTTPException(status.HTTP_400_BAD_REQUEST, exc.message)
 
-    def update(self, entity_id: int, payload):
-        return self.service.update(entity_id, payload)
+    def _register_routes(self) -> None:
+        # Shared-catalog lookups for the UI until catalog modules own these APIs.
+        self.router.get("/lookups/products", response_model=list[ProductOptionSchema])(
+            self.list_product_options
+        )
+        self.router.get("/lookups/suppliers", response_model=list[SupplierOptionSchema])(
+            self.list_supplier_options
+        )
+        self.router.get(
+            "/lookups/cost-centers", response_model=list[CostCenterOptionSchema]
+        )(self.list_cost_center_options)
 
-    def delete(self, entity_id: int):
-        return self.service.delete(entity_id)
+        self.router.post("/orders", response_model=OrderReadSchema)(self.create_order)
+        self.router.get("/orders", response_model=list[OrderReadSchema])(self.list_orders)
+        self.router.get("/orders/{order_id}", response_model=OrderReadSchema)(self.get_order)
+        self.router.patch("/orders/{order_id}", response_model=OrderReadSchema)(
+            self.update_order
+        )
+        self.router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)(
+            self.delete_order
+        )
+
+        self.router.post(
+            "/orders/{order_id}/items",
+            response_model=OrderItemReadSchema,
+        )(self.add_item)
+        self.router.get(
+            "/orders/{order_id}/items",
+            response_model=list[OrderItemReadSchema],
+        )(self.list_items)
+        self.router.patch(
+            "/orders/{order_id}/items/{item_id}",
+            response_model=OrderItemReadSchema,
+        )(self.update_item)
+        self.router.delete(
+            "/orders/{order_id}/items/{item_id}",
+            status_code=status.HTTP_204_NO_CONTENT,
+        )(self.delete_item)
+
+        self.router.post("/", response_model=PurchaseReadSchema)(self.register_purchase)
+        self.router.get("/", response_model=list[PurchaseReadSchema])(self.list_purchases)
+        self.router.get("/{purchase_id}", response_model=PurchaseReadSchema)(
+            self.get_purchase
+        )
+        self.router.patch("/{purchase_id}", response_model=PurchaseReadSchema)(
+            self.update_purchase
+        )
+        self.router.delete("/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)(
+            self.delete_purchase
+        )
+
+    def list_product_options(self) -> list[ProductOptionSchema]:
+        return self.service.list_product_options()
+
+    def list_supplier_options(self) -> list[SupplierOptionSchema]:
+        return self.service.list_supplier_options()
+
+    def list_cost_center_options(self) -> list[CostCenterOptionSchema]:
+        return self.service.list_cost_center_options()
+
+    def create_order(self, payload: OrderCreateSchema) -> OrderReadSchema:
+        try:
+            return self.service.create_order(payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+
+    def list_orders(self) -> list[OrderReadSchema]:
+        return self.service.list_orders()
+
+    def get_order(self, order_id: int) -> OrderReadSchema:
+        order = self.service.get_order(order_id)
+        if order is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return order
+
+    def update_order(self, order_id: int, payload: OrderUpdateSchema) -> OrderReadSchema:
+        try:
+            order = self.service.update_order(order_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if order is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return order
+
+    def delete_order(self, order_id: int) -> None:
+        if not self.service.delete_order(order_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+
+    def add_item(
+        self, order_id: int, payload: OrderItemCreateSchema
+    ) -> OrderItemReadSchema:
+        try:
+            item = self.service.add_item(order_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if item is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return item
+
+    def list_items(self, order_id: int) -> list[OrderItemReadSchema]:
+        items = self.service.list_items(order_id)
+        if items is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return items
+
+    def update_item(
+        self,
+        order_id: int,
+        item_id: int,
+        payload: OrderItemUpdateSchema,
+    ) -> OrderItemReadSchema:
+        try:
+            item = self.service.update_item(order_id, item_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if item is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order item not found")
+        return item
+
+    def delete_item(self, order_id: int, item_id: int) -> None:
+        try:
+            ok = self.service.delete_item(order_id, item_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if not ok:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order item not found")
+
+    def register_purchase(self, payload: PurchaseCreateSchema) -> PurchaseReadSchema:
+        try:
+            purchase = self.service.register_purchase(payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if purchase is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return purchase
+
+    def list_purchases(self) -> list[PurchaseReadSchema]:
+        return self.service.list_purchases()
+
+    def get_purchase(self, purchase_id: int) -> PurchaseReadSchema:
+        purchase = self.service.get_purchase(purchase_id)
+        if purchase is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase not found")
+        return purchase
+
+    def update_purchase(
+        self, purchase_id: int, payload: PurchaseUpdateSchema
+    ) -> PurchaseReadSchema:
+        purchase = self.service.update_purchase(purchase_id, payload)
+        if purchase is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase not found")
+        return purchase
+
+    def delete_purchase(self, purchase_id: int) -> None:
+        if not self.service.delete_purchase(purchase_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase not found")
+
+
+purchase_controller = PurchaseController()
+router = purchase_controller.router
