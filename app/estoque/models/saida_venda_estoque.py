@@ -1,4 +1,4 @@
-"""Modelo ORM da entidade saida_estoque."""
+"""Modelo ORM da entidade saida_venda_estoque."""
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ if TYPE_CHECKING:
     from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
 
 
-class SaidaEstoqueModel(Base):
-    """Representa a saída de produto do estoque para uso em uma atividade agrícola.
+class SaidaVendaEstoqueModel(Base):
+    """Representa a saída de produto do estoque por motivo de venda.
 
-    Corresponde à tabela `saida_estoque` no banco.
+    Corresponde à tabela `saida_venda_estoque` no banco.
     """
 
-    __tablename__ = "saida_estoque"
+    __tablename__ = "saida_venda_estoque"
 
-    id_saida: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id_saida_venda: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     id_movimentacao: Mapped[int] = mapped_column(
         BigInteger,
@@ -30,19 +30,20 @@ class SaidaEstoqueModel(Base):
         unique=True,
     )
 
-    id_atividade: Mapped[int] = mapped_column(
+    id_item_venda: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("atividade_agricola.id_atividade"),
+        ForeignKey("item_venda.id_item_venda"),
         nullable=False,
+        index=True,
     )
 
     # Relacionamentos
-    movimentacao: Mapped["MovimentacaoEstoqueModel"] = relationship(back_populates="saida")
+    movimentacao: Mapped["MovimentacaoEstoqueModel"] = relationship(back_populates="saida_venda")
 
     def __repr__(self) -> str:
         return (
-            f"<SaidaEstoqueModel "
-            f"id={self.id_saida} "
+            f"<SaidaVendaEstoqueModel "
+            f"id={self.id_saida_venda} "
             f"id_movimentacao={self.id_movimentacao} "
-            f"id_atividade={self.id_atividade}>"
+            f"id_item_venda={self.id_item_venda}>"
         )
