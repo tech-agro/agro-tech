@@ -58,8 +58,5 @@ class CertificacaoLoteModel(Base):
         nullable=False,
     )
 
-    # Relacionamentos
-    lote: Mapped["LoteModel"] = relationship(back_populates="certificacoes")
-
     def __repr__(self) -> str:
         return f"<CertificacaoLoteModel id={self.id_cert_lote} id_lote={self.id_lote} status={self.status!r}>"

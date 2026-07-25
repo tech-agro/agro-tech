@@ -37,9 +37,6 @@ class SaidaVendaEstoqueModel(Base):
         index=True,
     )
 
-    # Relacionamentos
-    movimentacao: Mapped["MovimentacaoEstoqueModel"] = relationship(back_populates="saida_venda")
-
     def __repr__(self) -> str:
         return (
             f"<SaidaVendaEstoqueModel "

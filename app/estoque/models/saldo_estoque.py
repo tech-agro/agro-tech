@@ -52,9 +52,6 @@ class SaldoEstoqueModel(Base):
 
     quantidade_atual: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
-    # Relacionamentos
-    estoque: Mapped["EstoqueModel"] = relationship(back_populates="saldos")
-
     def __repr__(self) -> str:
         return (
             f"<SaldoEstoqueModel "

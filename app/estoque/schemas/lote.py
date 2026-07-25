@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoteCreateSchema(BaseModel):
-    id_colheita: int
+    id_colheita: int | None = None
     id_produto: int
     codigo_lote: str = Field(min_length=1, max_length=120)
     validade: date | None = None
@@ -24,7 +24,7 @@ class LoteReadSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id_lote: int
-    id_colheita: int
+    id_colheita: int | None
     id_produto: int
     codigo_lote: str
     validade: date | None

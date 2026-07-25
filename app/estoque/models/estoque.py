@@ -37,12 +37,5 @@ class EstoqueModel(Base):
         nullable=False,
     )
 
-    # Relacionamentos
-    local_armazenamento: Mapped["LocalArmazenamentoModel"] = relationship(back_populates="estoques")
-
-    saldos: Mapped[list["SaldoEstoqueModel"]] = relationship(back_populates="estoque")
-
-    movimentacoes: Mapped[list["MovimentacaoEstoqueModel"]] = relationship(back_populates="estoque")
-
     def __repr__(self) -> str:
         return f"<EstoqueModel id={self.id_estoque} id_local={self.id_local}>"

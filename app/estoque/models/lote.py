@@ -26,10 +26,9 @@ class LoteModel(Base):
 
     id_lote: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
-    id_colheita: Mapped[int] = mapped_column(
+    id_colheita: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("colheita.id_colheita"),
-        nullable=False,
         index=True,
     )
 
@@ -45,13 +44,6 @@ class LoteModel(Base):
     validade: Mapped[date | None] = mapped_column(Date)
 
     qualidade: Mapped[str | None] = mapped_column(String(80))
-
-    # Relacionamentos
-    certificacoes: Mapped[list["CertificacaoLoteModel"]] = relationship(back_populates="lote")
-
-    movimentacoes: Mapped[list["MovimentacaoEstoqueModel"]] = relationship(back_populates="lote")
-
-    consumos_insumo: Mapped[list["ConsumoInsumoModel"]] = relationship(back_populates="lote")
 
     def __repr__(self) -> str:
         return f"<LoteModel id={self.id_lote} codigo={self.codigo_lote!r}>"

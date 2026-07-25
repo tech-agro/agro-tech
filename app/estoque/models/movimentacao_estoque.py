@@ -62,13 +62,6 @@ class MovimentacaoEstoqueModel(Base):
 
     data_movimentacao: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
-    # Relacionamentos
-    estoque: Mapped["EstoqueModel"] = relationship(back_populates="movimentacoes")
-    lote: Mapped["LoteModel"] = relationship(back_populates="movimentacoes")
-    entrada: Mapped["EntradaEstoqueModel"] = relationship(back_populates="movimentacao", uselist=False)
-    saida: Mapped["SaidaEstoqueModel"] = relationship(back_populates="movimentacao", uselist=False)
-    saida_venda: Mapped["SaidaVendaEstoqueModel"] = relationship(back_populates="movimentacao", uselist=False)
-
     def __repr__(self) -> str:
         return (
             f"<MovimentacaoEstoqueModel "

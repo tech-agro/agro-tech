@@ -35,9 +35,6 @@ class LocalArmazenamentoModel(Base):
 
     capacidade: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
 
-    # Relacionamentos
-    estoques: Mapped[list["EstoqueModel"]] = relationship(back_populates="local_armazenamento")
-
     def __repr__(self) -> str:
         return (
             f"<LocalArmazenamentoModel "

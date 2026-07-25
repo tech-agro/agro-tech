@@ -52,9 +52,6 @@ class ConsumoInsumoModel(Base):
         nullable=False,
     )
 
-    # Relacionamentos
-    lote: Mapped["LoteModel"] = relationship(back_populates="consumos_insumo")
-
     def __repr__(self) -> str:
         return (
             f"<ConsumoInsumoModel "

@@ -39,11 +39,6 @@ class EntradaEstoqueModel(Base):
         unique=True,
     )
 
-    # Relacionamentos
-    movimentacao: Mapped["MovimentacaoEstoqueModel"] = relationship(
-        back_populates="entrada"
-    )
-
     def __repr__(self) -> str:
         return (
             f"<EntradaEstoqueModel "
