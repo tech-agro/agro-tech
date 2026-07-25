@@ -1,4 +1,4 @@
-"""Cliente HTTP do Streamlit para a API de identidade (app/identity/controller.py, servida via FastAPI)."""
+"""HTTP client for the identity Streamlit UI → FastAPI."""
 
 from __future__ import annotations
 

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from pathlib import Path
+import sys
+
+_STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
+if str(_STREAMLIT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_STREAMLIT_ROOT))
 
 import streamlit as st
 
-from app.identity.streamlit_client import require_login
-from app.producao import streamlit_client as producao_api
 from app.producao.enum import (
     StatusAtividadeAgricola,
     StatusOperacaoAgricola,
@@ -14,11 +18,16 @@ from app.producao.enum import (
     StatusPlantio,
     StatusSafra,
 )
+from components.shared.screens import setup_page
+from services import producao_client as producao_api
+from services.identity_client import require_login
 
 require_login()
 
-st.title("Producao")
-st.caption("Ciclo produtivo: safra -> talhao -> planejamento -> ordem -> plantio -> operacoes/atividades -> colheita.")
+setup_page(
+    "Producao",
+    "Ciclo produtivo: safra -> talhao -> planejamento -> ordem -> plantio -> operacoes/atividades -> colheita.",
+)
 
 
 # ----------------------------------------------------------------------

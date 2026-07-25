@@ -1,4 +1,6 @@
-streamlit
+streamlit>=1.51.0
+streamlit-aggrid>=1.1.0
+streamlit-option-menu
 sqlalchemy
 psycopg[binary]
 python-dotenv
