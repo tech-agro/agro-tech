@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, Enum, ForeignKey, String, BigInteger
+from sqlalchemy import CheckConstraint, Date, Enum, ForeignKey, String, BigInteger, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
@@ -29,6 +29,11 @@ class CertificacaoLoteModel(Base):
         CheckConstraint(
             "dt_validade IS NULL OR dt_emissao IS NULL OR dt_validade >= dt_emissao",
             name="chk_certificacao_lote_periodo",
+        ),
+        UniqueConstraint(
+            "id_certificacao",
+            "id_lote",
+            name="uq_certificacao_lote",
         ),
     )
 

@@ -27,6 +27,15 @@ from app.estoque.schemas.recebimento_compra import (
 )
 from app.estoque.schemas.saldo_estoque import SaldoEstoqueReadSchema
 from app.estoque.schemas.entrada_colheita_estoque import EntradaColheitaCreateSchema, EntradaColheitaReadSchema
+from app.estoque.schemas.lookups import (
+    CertificacaoOptionSchema,
+    ColheitaOptionSchema,
+    EstoqueOptionSchema,
+    ItemPedidoOptionSchema,
+    LocalArmazenamentoOptionSchema,
+    LoteOptionSchema,
+    ProdutoOptionSchema,
+)
 from app.estoque.service import EstoqueService
 
 
@@ -44,7 +53,6 @@ class EstoqueController:
 
     def _register_routes(self) -> None:
         # --- Lotes ---
-        self.router.post("/lotes", response_model=LoteReadSchema)(self.create_lote)
         self.router.get("/lotes", response_model=list[LoteReadSchema])(self.list_lotes)
         self.router.get(
             "/lotes/vencidos", response_model=list[LoteReadSchema]
@@ -156,15 +164,32 @@ class EstoqueController:
             "/entradas-colheita", response_model=EntradaColheitaReadSchema
         )(self.registrar_entrada_colheita)
 
+        # --- Lookups (para preencher comboboxes/selects no frontend) ---
+        self.router.get(
+            "/lookups/produtos", response_model=list[ProdutoOptionSchema]
+        )(self.list_produto_options)
+        self.router.get(
+            "/lookups/colheitas", response_model=list[ColheitaOptionSchema]
+        )(self.list_colheita_options)
+        self.router.get(
+            "/lookups/locais", response_model=list[LocalArmazenamentoOptionSchema]
+        )(self.list_local_options)
+        self.router.get(
+            "/lookups/estoques", response_model=list[EstoqueOptionSchema]
+        )(self.list_estoque_options)
+        self.router.get(
+            "/lookups/lotes", response_model=list[LoteOptionSchema]
+        )(self.list_lote_options)
+        self.router.get(
+            "/lookups/certificacoes", response_model=list[CertificacaoOptionSchema]
+        )(self.list_certificacao_options)
+        self.router.get(
+            "/lookups/itens-pedido", response_model=list[ItemPedidoOptionSchema]
+        )(self.list_item_pedido_options)
+
     # ------------------------------------------------------------------
     # Lotes
     # ------------------------------------------------------------------
-
-    def create_lote(self, payload: LoteCreateSchema) -> LoteReadSchema:
-        try:
-            return self.service.create_lote(payload)
-        except EstoqueError as exc:
-            raise self._map_error(exc) from exc
 
     def list_lotes(self, limit: int = 50, offset: int = 0) -> list[LoteReadSchema]:
         return self.service.list_lotes_com_produto(limit, offset)
@@ -388,6 +413,31 @@ class EstoqueController:
             return self.service.registrar_entrada_colheita(payload)
         except EstoqueError as exc:
             raise self._map_error(exc) from exc
+
+    # ------------------------------------------------------------------
+    # Lookups
+    # ------------------------------------------------------------------
+
+    def list_produto_options(self) -> list[ProdutoOptionSchema]:
+        return self.service.list_produto_options()
+
+    def list_colheita_options(self) -> list[ColheitaOptionSchema]:
+        return self.service.list_colheita_options()
+
+    def list_local_options(self) -> list[LocalArmazenamentoOptionSchema]:
+        return self.service.list_local_options()
+
+    def list_estoque_options(self) -> list[EstoqueOptionSchema]:
+        return self.service.list_estoque_options()
+
+    def list_lote_options(self) -> list[LoteOptionSchema]:
+        return self.service.list_lote_options()
+
+    def list_certificacao_options(self) -> list[CertificacaoOptionSchema]:
+        return self.service.list_certificacao_options()
+
+    def list_item_pedido_options(self) -> list[ItemPedidoOptionSchema]:
+        return self.service.list_item_pedido_options()
 
 
 estoque_controller = EstoqueController()

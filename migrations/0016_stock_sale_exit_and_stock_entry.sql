@@ -15,6 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_cert_lote ON certificacao_lote(id_lote);
 
 ALTER TABLE entrada_estoque ADD CONSTRAINT uq_entrada_movimentacao UNIQUE (id_movimentacao);
 ALTER TABLE saida_estoque ADD CONSTRAINT uq_saida_movimentacao UNIQUE (id_movimentacao);
+ALTER TABLE certificacao_lote ADD CONSTRAINT uq_certificacao_lote UNIQUE (id_certificacao, id_lote);
 
 CREATE TABLE IF NOT EXISTS recebimento_compra (
     id_recebimento BIGSERIAL PRIMARY KEY,

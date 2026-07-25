@@ -6,6 +6,9 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.compras.enum import OrderStatus
+from app.compras.models.order import OrderModel
+from app.compras.models.order_item import OrderItemModel
 from app.compras.models.refs import ProdutoRef
 from app.core.base_repository import BaseRepository
 from app.core.database import get_session
@@ -16,7 +19,7 @@ from app.estoque.models.local_armazenamento import LocalArmazenamentoModel
 from app.estoque.models.lote import LoteModel
 from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
 from app.estoque.models.recebimento_compra import RecebimentoCompraModel
-from app.estoque.models.refs import CertificacaoRef
+from app.estoque.models.refs import CertificacaoRef, ColheitaRef
 from app.estoque.models.saldo_estoque import SaldoEstoqueModel
 
 
@@ -140,6 +143,25 @@ class EstoqueRepository(BaseRepository[EstoqueModel]):
                 is not None
             )
 
+    def get_com_local(self, id_estoque: int) -> tuple[EstoqueModel, str | None] | None:
+        """Obtém um estoque trazendo também a descrição do local."""
+        with get_session() as session:
+            row = session.execute(
+                select(EstoqueModel, LocalArmazenamentoModel.descricao)
+                .outerjoin(
+                    LocalArmazenamentoModel,
+                    LocalArmazenamentoModel.id_local == EstoqueModel.id_local,
+                )
+                .where(EstoqueModel.id_estoque == id_estoque)
+            ).first()
+
+            if row is None:
+                return None
+
+            estoque, local_descricao = row
+            session.expunge(estoque)
+            return estoque, local_descricao
+
 
 class CertificacaoLoteRepository(BaseRepository[CertificacaoLoteModel]):
     model = CertificacaoLoteModel
@@ -189,6 +211,25 @@ class CertificacaoLoteRepository(BaseRepository[CertificacaoLoteModel]):
                 )
                 is not None
             )
+
+    def get_by_certificacao_lote(
+        self,
+        id_certificacao: int,
+        id_lote: int,
+    ) -> CertificacaoLoteModel | None:
+        """Busca o vínculo entre uma certificação e um lote."""
+        with get_session() as session:
+            registro = session.scalars(
+                select(CertificacaoLoteModel).where(
+                    CertificacaoLoteModel.id_certificacao == id_certificacao,
+                    CertificacaoLoteModel.id_lote == id_lote,
+                )
+            ).first()
+
+            if registro is not None:
+                session.expunge(registro)
+
+            return registro
 
 
 class SaldoEstoqueRepository(BaseRepository[SaldoEstoqueModel]):
@@ -403,3 +444,90 @@ class RecebimentoCompraRepository(BaseRepository[RecebimentoCompraModel]):
             for registro in registros:
                 session.expunge(registro)
             return list(registros)
+
+
+class LookupRepository:
+    """Consultas utilizadas para preencher comboboxes e selects no frontend."""
+
+    def list_produtos(self) -> list[tuple[int, str]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(ProdutoRef.id_produto, ProdutoRef.nome).order_by(ProdutoRef.nome)
+            ).all()
+            return [(id_produto, nome) for id_produto, nome in rows]
+
+    def list_colheitas(self) -> list[tuple[int, str]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(ColheitaRef.id_colheita, ColheitaRef.dt_fim).order_by(
+                    ColheitaRef.id_colheita.desc()
+                )
+            ).all()
+            return [
+                (
+                    id_colheita,
+                    f"Colheita #{id_colheita} ({dt_fim:%d/%m/%Y})"
+                    if dt_fim is not None
+                    else f"Colheita #{id_colheita} (em andamento)",
+                )
+                for id_colheita, dt_fim in rows
+            ]
+
+    def list_locais(self) -> list[tuple[int, str]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(LocalArmazenamentoModel.id_local, LocalArmazenamentoModel.descricao)
+                .order_by(LocalArmazenamentoModel.descricao)
+            ).all()
+            return [(id_local, descricao) for id_local, descricao in rows]
+
+    def list_estoques(self) -> list[tuple[int, str]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(EstoqueModel.id_estoque, LocalArmazenamentoModel.descricao)
+                .join(
+                    LocalArmazenamentoModel,
+                    LocalArmazenamentoModel.id_local == EstoqueModel.id_local,
+                )
+                .order_by(LocalArmazenamentoModel.descricao)
+            ).all()
+            return [(id_estoque, descricao) for id_estoque, descricao in rows]
+
+    def list_lotes(self) -> list[tuple[int, str, str | None]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(LoteModel.id_lote, LoteModel.codigo_lote, ProdutoRef.nome)
+                .outerjoin(ProdutoRef, ProdutoRef.id_produto == LoteModel.id_produto)
+                .order_by(LoteModel.codigo_lote)
+            ).all()
+            return [
+                (id_lote, codigo_lote, produto_nome)
+                for id_lote, codigo_lote, produto_nome in rows
+            ]
+
+    def list_certificacoes(self) -> list[tuple[int, str]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(CertificacaoRef.id_certificacao, CertificacaoRef.nome)
+                .order_by(CertificacaoRef.nome)
+            ).all()
+            return [(id_certificacao, nome) for id_certificacao, nome in rows]
+
+    def list_itens_pedido_pendentes(self) -> list[tuple[int, str]]:
+        """Itens de pedido ainda não totalmente atendidos, candidatos a recebimento."""
+        with get_session() as session:
+            rows = session.execute(
+                select(OrderItemModel.id_item, ProdutoRef.nome, OrderItemModel.quantidade)
+                .join(OrderModel, OrderModel.id_pedido == OrderItemModel.id_pedido)
+                .outerjoin(ProdutoRef, ProdutoRef.id_produto == OrderItemModel.id_produto)
+                .where(
+                    OrderModel.status.in_(
+                        [OrderStatus.APROVADO, OrderStatus.PARCIALMENTE_ATENDIDO]
+                    )
+                )
+                .order_by(OrderItemModel.id_item.desc())
+            ).all()
+            return [
+                (id_item, f"{produto_nome or 'Produto desconhecido'} — pedido de {quantidade}")
+                for id_item, produto_nome, quantidade in rows
+            ]

@@ -120,42 +120,75 @@ def row_actions(
     selected_count: int = 0,
     total_count: int = 0,
     disabled: bool = False,
+    show_edit: bool = True,
 ) -> str | None:
     """Compact footer: selection caption + Ver / Editar / Excluir."""
-    col_info, col_view, col_edit, col_delete = st.columns([4, 1, 1, 1])
-    with col_info:
-        st.caption(f"{selected_count} de {total_count} linha(s) selecionada(s).")
 
     clicked: str | None = None
-    with col_view:
-        if st.button(
-            "Ver",
-            icon=":material/visibility:",
-            use_container_width=True,
-            disabled=disabled,
-            key=f"{key}_view",
-        ):
-            clicked = "view"
-    with col_edit:
-        if st.button(
-            "Editar",
-            icon=":material/edit:",
-            use_container_width=True,
-            disabled=disabled,
-            key=f"{key}_edit",
-        ):
-            clicked = "edit"
-    with col_delete:
-        if st.button(
-            "Excluir",
-            icon=":material/delete:",
-            use_container_width=True,
-            disabled=disabled,
-            key=f"{key}_delete",
-        ):
-            clicked = "delete"
-    return clicked
 
+    if show_edit:
+        col_info, col_view, col_edit, col_delete = st.columns([4, 1, 1, 1])
+
+        with col_info:
+            st.caption(f"{selected_count} de {total_count} linha(s) selecionada(s).")
+
+        with col_view:
+            if st.button(
+                "Ver",
+                icon=":material/visibility:",
+                use_container_width=True,
+                disabled=disabled,
+                key=f"{key}_view",
+            ):
+                clicked = "view"
+
+        with col_edit:
+            if st.button(
+                "Editar",
+                icon=":material/edit:",
+                use_container_width=True,
+                disabled=disabled,
+                key=f"{key}_edit",
+            ):
+                clicked = "edit"
+
+        with col_delete:
+            if st.button(
+                "Excluir",
+                icon=":material/delete:",
+                use_container_width=True,
+                disabled=disabled,
+                key=f"{key}_delete",
+            ):
+                clicked = "delete"
+
+    else:
+        col_info, col_view, col_delete = st.columns([5, 1, 1])
+
+        with col_info:
+            st.caption(f"{selected_count} de {total_count} linha(s) selecionada(s).")
+
+        with col_view:
+            if st.button(
+                "Ver",
+                icon=":material/visibility:",
+                use_container_width=True,
+                disabled=disabled,
+                key=f"{key}_view",
+            ):
+                clicked = "view"
+
+        with col_delete:
+            if st.button(
+                "Excluir",
+                icon=":material/delete:",
+                use_container_width=True,
+                disabled=disabled,
+                key=f"{key}_delete",
+            ):
+                clicked = "delete"
+
+    return clicked
 
 def toast_ok(message: str) -> None:
     st.toast(message)

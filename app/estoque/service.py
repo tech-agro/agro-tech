@@ -25,6 +25,7 @@ from app.estoque.repository import (
     CertificacaoLoteRepository,
     EstoqueRepository,
     LocalArmazenamentoRepository,
+    LookupRepository,
     LoteRepository,
     MovimentacaoEstoqueRepository,
     RecebimentoCompraRepository,
@@ -34,6 +35,7 @@ from app.estoque.schemas.certificacao_lote import CertificacaoLoteCreateSchema, 
 from app.estoque.schemas.entrada_colheita_estoque import EntradaColheitaCreateSchema, EntradaColheitaReadSchema
 from app.estoque.schemas.estoque import EstoqueCreateSchema, EstoqueReadSchema
 from app.estoque.schemas.local_armazenamento import LocalArmazenamentoCreateSchema, LocalArmazenamentoReadSchema, LocalArmazenamentoUpdateSchema
+from app.estoque.schemas.lookups import CertificacaoOptionSchema, ColheitaOptionSchema, EstoqueOptionSchema, ItemPedidoOptionSchema, LocalArmazenamentoOptionSchema, LoteOptionSchema, ProdutoOptionSchema
 from app.estoque.schemas.lote import LoteCreateSchema, LoteReadSchema, LoteUpdateSchema
 from app.estoque.schemas.movimentacao_estoque import MovimentacaoEstoqueReadSchema
 from app.estoque.schemas.recebimento_compra import (
@@ -55,6 +57,7 @@ class EstoqueService:
         saldo_repo: SaldoEstoqueRepository | None = None,
         movimentacao_repo: MovimentacaoEstoqueRepository | None = None,
         recebimento_repo: RecebimentoCompraRepository | None = None,
+        lookup_repo: LookupRepository | None = None,
         order_repo: OrderRepository | None = None,
         order_item_repo: OrderItemRepository | None = None,
         purchase_repo: PurchaseRepository | None = None,
@@ -66,6 +69,7 @@ class EstoqueService:
         self.saldo_repo = saldo_repo or SaldoEstoqueRepository()
         self.movimentacao_repo = movimentacao_repo or MovimentacaoEstoqueRepository()
         self.recebimento_repo = recebimento_repo or RecebimentoCompraRepository()
+        self.lookup_repo = lookup_repo or LookupRepository()
         self.order_repo = order_repo or OrderRepository()
         self.order_item_repo = order_item_repo or OrderItemRepository()
         self.purchase_repo = purchase_repo or PurchaseRepository()
@@ -643,12 +647,17 @@ class EstoqueService:
         return EstoqueReadSchema.model_validate(record)
         
     def get_estoque(self, id_estoque: int) -> EstoqueReadSchema | None:
-        record = self.estoque_repo.get_by_id(id_estoque)
+        result = self.estoque_repo.get_com_local(id_estoque)
 
-        if record is None:
+        if result is None:
             return None
 
-        return EstoqueReadSchema.model_validate(record)
+        estoque, local_descricao = result
+
+        schema = EstoqueReadSchema.model_validate(estoque)
+        schema.local_descricao = local_descricao
+
+        return schema
 
     def list_estoques(self) -> list[EstoqueReadSchema]:
         return [
@@ -736,11 +745,21 @@ class EstoqueService:
     # ------------------------------------------------------------------
 
     def create_certificacao(self, payload: CertificacaoLoteCreateSchema) -> CertificacaoLoteReadSchema:
+        existente = self.certificacao_repo.get_by_certificacao_lote(
+            payload.id_certificacao,
+            payload.id_lote,
+        )
+
+        if existente is not None:
+            raise EstoqueError(
+                "Esta certificação já está vinculada a este lote."
+            )
+        
         try:
             record = self.certificacao_repo.create(payload.model_dump())
         except IntegrityError as exc:
             raise EstoqueError(
-                "Não foi possível criar a certificação. Verifique os dados informados."
+                "Não foi possível vincular a certificação ao lote. Verifique os dados informados."
             ) from exc
         return CertificacaoLoteReadSchema.model_validate(record)
 
@@ -789,3 +808,49 @@ class EstoqueService:
             schema.certificacao_nome = certificacao_nome
             result.append(schema)
         return result
+
+    # ------------------------------------------------------------------
+    # Lookups (para preencher comboboxes/selects no frontend)
+    # ------------------------------------------------------------------
+
+    def list_produto_options(self) -> list[ProdutoOptionSchema]:
+        return [
+            ProdutoOptionSchema(id_produto=id_produto, nome=nome)
+            for id_produto, nome in self.lookup_repo.list_produtos()
+        ]
+
+    def list_colheita_options(self) -> list[ColheitaOptionSchema]:
+        return [
+            ColheitaOptionSchema(id_colheita=id_colheita, label=label)
+            for id_colheita, label in self.lookup_repo.list_colheitas()
+        ]
+
+    def list_local_options(self) -> list[LocalArmazenamentoOptionSchema]:
+        return [
+            LocalArmazenamentoOptionSchema(id_local=id_local, descricao=descricao)
+            for id_local, descricao in self.lookup_repo.list_locais()
+        ]
+
+    def list_estoque_options(self) -> list[EstoqueOptionSchema]:
+        return [
+            EstoqueOptionSchema(id_estoque=id_estoque, descricao=descricao)
+            for id_estoque, descricao in self.lookup_repo.list_estoques()
+        ]
+
+    def list_lote_options(self) -> list[LoteOptionSchema]:
+        return [
+            LoteOptionSchema(id_lote=id_lote, codigo_lote=codigo_lote, produto_nome=produto_nome)
+            for id_lote, codigo_lote, produto_nome in self.lookup_repo.list_lotes()
+        ]
+
+    def list_certificacao_options(self) -> list[CertificacaoOptionSchema]:
+        return [
+            CertificacaoOptionSchema(id_certificacao=id_certificacao, nome=nome)
+            for id_certificacao, nome in self.lookup_repo.list_certificacoes()
+        ]
+
+    def list_item_pedido_options(self) -> list[ItemPedidoOptionSchema]:
+        return [
+            ItemPedidoOptionSchema(id_item_pedido=id_item, descricao=descricao)
+            for id_item, descricao in self.lookup_repo.list_itens_pedido_pendentes()
+        ]
