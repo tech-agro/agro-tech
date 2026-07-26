@@ -1,7 +1,17 @@
-"""Schema da entidade saldo_estoque."""
+"""Schemas Pydantic da entidade saldo_estoque."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-@dataclass(slots=True)
-class SaldoEstoqueSchema:
-    pass
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict
+
+
+class SaldoEstoqueReadSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_saldo: int
+    id_estoque: int
+    id_produto: int
+    quantidade_atual: Decimal
+    produto_nome: str | None = None
