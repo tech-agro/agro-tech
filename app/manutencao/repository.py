@@ -413,21 +413,24 @@ class ManutencaoRepository:
         *,
         exclude_id: int | None = None,
     ) -> int:
+        params: dict[str, int] = {"id_maquina": id_maquina}
+        exclude_clause = ""
+        if exclude_id is not None:
+            exclude_clause = "and id_manutencao <> :exclude_id"
+            params["exclude_id"] = exclude_id
+
         sql = text(
-            """
+            f"""
             select count(*)
             from manutencao
             where id_maquina = :id_maquina
               and status in ('ABERTA', 'EM_EXECUCAO')
-              and (:exclude_id is null or id_manutencao <> :exclude_id)
+              {exclude_clause}
             """
         )
         try:
             with self.pg_connector.pool.begin() as conn:
-                return conn.execute(
-                    sql,
-                    {"id_maquina": id_maquina, "exclude_id": exclude_id},
-                ).scalar_one()
+                return conn.execute(sql, params).scalar_one()
         except Exception as exc:
             self.logger.error(
                 "Erro ao contar manutencoes abertas da maquina %s: %s",
