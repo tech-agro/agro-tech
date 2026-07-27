@@ -6,7 +6,9 @@ import logging
 from datetime import date
 from decimal import Decimal
 
-from app.core.database import pg_connector
+from sqlalchemy import text
+
+from app.core.database import get_session, pg_connector
 from app.financeiro.enum import StatusContaReceber
 from app.financeiro.models import ContaReceberModel
 from app.financeiro.repository import FinanceiroRepository
@@ -43,3 +45,71 @@ class FinanceiroService:
         if conta is None:
             raise ValueError("Nao foi possivel registrar a conta a receber da venda.")
         return conta
+
+    def register_logistics_cost(
+        self,
+        *,
+        id_operacao: int,
+        valor: Decimal | float,
+        data_movimento: date | None = None,
+        descricao: str | None = None,
+    ) -> int | None:
+        """Called by Logistics when an operation incurs cost.
+
+        Persists a cash-flow row (tipo=custo_logistico). Full AP/AR documents
+        remain out of scope until the financial module is completed.
+        """
+        amount = Decimal(str(valor))
+        if amount <= 0:
+            return None
+        with get_session() as session:
+            row = session.execute(
+                text(
+                    """
+                    INSERT INTO fluxo_caixa (valor, tipo, data_movimento)
+                    VALUES (:valor, :tipo, :data_movimento)
+                    RETURNING id_fluxo
+                    """
+                ),
+                {
+                    "valor": amount,
+                    "tipo": f"custo_logistico:op={id_operacao}"
+                    + (f":{descricao}" if descricao else ""),
+                    "data_movimento": data_movimento or date.today(),
+                },
+            ).first()
+            return int(row[0]) if row is not None else None
+
+    def register_phytosanitary_cost(
+        self,
+        *,
+        id_aplicacao: int,
+        valor: Decimal | float,
+        data_movimento: date | None = None,
+        descricao: str | None = None,
+    ) -> int | None:
+        """Called by Phytosanitary when a pesticide application incurs cost.
+
+        Persists a cash-flow row (tipo=custo_fitossanitario). Full cost-center
+        documents remain out of scope until the financial module is completed.
+        """
+        amount = Decimal(str(valor))
+        if amount <= 0:
+            return None
+        with get_session() as session:
+            row = session.execute(
+                text(
+                    """
+                    INSERT INTO fluxo_caixa (valor, tipo, data_movimento)
+                    VALUES (:valor, :tipo, :data_movimento)
+                    RETURNING id_fluxo
+                    """
+                ),
+                {
+                    "valor": amount,
+                    "tipo": f"custo_fitossanitario:app={id_aplicacao}"
+                    + (f":{descricao}" if descricao else ""),
+                    "data_movimento": data_movimento or date.today(),
+                },
+            ).first()
+            return int(row[0]) if row is not None else None

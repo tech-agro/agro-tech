@@ -3,25 +3,31 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from uuid import uuid4
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.compras.enum import OrderStatus
+from app.compras.models.refs import ProdutoRef
 from app.compras.repository import OrderItemRepository, OrderRepository, PurchaseRepository
 from app.core.database import get_session, pg_connector
 
 from app.estoque.errors import EstoqueError
+from app.estoque.enum import LotOriginType, MovementType, StatusLote
 from app.estoque.models.entrada_colheita_estoque import EntradaColheitaEstoqueModel
 from app.estoque.models.entrada_estoque import EntradaEstoqueModel
+from app.estoque.models.estoque import EstoqueModel
 from app.estoque.models.lote import LoteModel
 from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
 from app.estoque.models.recebimento_compra import RecebimentoCompraModel
+from app.estoque.models.refs import ColheitaRef, CulturaRef, GraoRef, PlantioRef
 from app.estoque.models.saida_estoque import SaidaEstoqueModel
 from app.estoque.models.saldo_estoque import SaldoEstoqueModel
+from app.estoque.models.saldo_lote import SaldoLoteModel
 from app.estoque.repository import (
     CertificacaoLoteRepository,
     EstoqueRepository,
@@ -31,6 +37,7 @@ from app.estoque.repository import (
     MovimentacaoEstoqueRepository,
     RecebimentoCompraRepository,
     SaldoEstoqueRepository,
+    SaldoLoteRepository,
 )
 from app.estoque.schemas.certificacao_lote import CertificacaoLoteCreateSchema, CertificacaoLoteReadSchema, CertificacaoLoteUpdateSchema
 from app.estoque.schemas.entrada_colheita_estoque import EntradaColheitaCreateSchema, EntradaColheitaReadSchema
@@ -44,6 +51,7 @@ from app.estoque.schemas.recebimento_compra import (
     RecebimentoCompraReadSchema,
 )
 from app.estoque.schemas.saldo_estoque import SaldoEstoqueReadSchema
+from app.estoque.schemas.saldo_lote import SaldoLoteReadSchema
 
 
 class EstoqueService:
@@ -56,6 +64,7 @@ class EstoqueService:
         estoque_repo: EstoqueRepository | None = None,
         certificacao_repo: CertificacaoLoteRepository | None = None,
         saldo_repo: SaldoEstoqueRepository | None = None,
+        saldo_lote_repo: SaldoLoteRepository | None = None,
         movimentacao_repo: MovimentacaoEstoqueRepository | None = None,
         recebimento_repo: RecebimentoCompraRepository | None = None,
         lookup_repo: LookupRepository | None = None,
@@ -68,6 +77,7 @@ class EstoqueService:
         self.estoque_repo = estoque_repo or EstoqueRepository()
         self.certificacao_repo = certificacao_repo or CertificacaoLoteRepository()
         self.saldo_repo = saldo_repo or SaldoEstoqueRepository()
+        self.saldo_lote_repo = saldo_lote_repo or SaldoLoteRepository()
         self.movimentacao_repo = movimentacao_repo or MovimentacaoEstoqueRepository()
         self.recebimento_repo = recebimento_repo or RecebimentoCompraRepository()
         self.lookup_repo = lookup_repo or LookupRepository()
@@ -75,54 +85,327 @@ class EstoqueService:
         self.order_item_repo = order_item_repo or OrderItemRepository()
         self.purchase_repo = purchase_repo or PurchaseRepository()
 
+    @staticmethod
+    def _create_lote_auto(
+        session: Session,
+        *,
+        id_produto: int,
+        tipo_origem: LotOriginType,
+        id_colheita: int | None = None,
+        validade: date | None = None,
+        qualidade: str | None = None,
+        quantidade_inicial: Decimal | None = None,
+        status: StatusLote = StatusLote.LIBERADO,
+        prefix: str = "LOTE",
+    ) -> LoteModel:
+        """Persist a lot and assign codigo_lote = LOTE-{id} after flush."""
+        lote = LoteModel(
+            id_colheita=id_colheita,
+            id_produto=id_produto,
+            codigo_lote=f"TMP-{uuid4().hex}",
+            validade=validade,
+            qualidade=qualidade,
+            tipo_origem=tipo_origem,
+            quantidade_inicial=quantidade_inicial,
+            status=status,
+        )
+        session.add(lote)
+        session.flush()
+        lote.codigo_lote = f"{prefix}-{lote.id_lote}"
+        return lote
+
     # ------------------------------------------------------------------
     # Hooks chamados por outros Módulos
     # ------------------------------------------------------------------
 
     def register_entry_from_purchase(self, id_compra: int) -> None:
-        """Chamado por Compras quando a compra é aprovada/registrada.
-
-        A entrada real de estoque só acontece quando a mercadoria chega
-        fisicamente, via `registrar_recebimento`. Mantido como no-op para
-        não acoplar aprovação financeira ao recebimento físico.
-        """
+        """No-op: physical receipt happens via registrar_recebimento."""
         return None
 
-    def register_entry_from_harvest(self, id_colheita: int) -> None:
-        """Chamado por Produção Agrícola quando uma colheita é concluída.
+    def register_entry_from_harvest(
+        self,
+        id_colheita: int,
+        *,
+        id_estoque: int | None = None,
+        id_produto: int | None = None,
+        quantidade: Decimal | None = None,
+    ) -> EntradaColheitaReadSchema | None:
+        """Called by production when a harvest is concluded.
 
-        Implementação futura:
-            - buscar os dados da colheita (produto, quantidade colhida);
-            - identificar o estoque de destino e o código de lote;
-            - chamar `registrar_entrada_colheita(...)`.
-
-        Mantido como placeholder até a implementação do módulo de Produção Agrícola.
+        Resolves product (grain matching culture name when possible), default
+        warehouse, and auto-generates the lot code.
+        Skips if an entry already exists for this harvest.
         """
-        return None
+        with get_session() as session:
+            existing = session.execute(
+                select(EntradaColheitaEstoqueModel).where(
+                    EntradaColheitaEstoqueModel.id_colheita == id_colheita
+                )
+            ).scalars().first()
+            if existing is not None:
+                return None
+
+            colheita = session.get(ColheitaRef, id_colheita)
+            if colheita is None:
+                raise EstoqueError("Harvest not found.")
+
+            resolved_qty = quantidade
+            if resolved_qty is None and colheita.quantidade_colhida is not None:
+                resolved_qty = Decimal(str(colheita.quantidade_colhida))
+            if resolved_qty is None or resolved_qty <= 0:
+                raise EstoqueError(
+                    "Harvest has no quantity; cannot register stock entry."
+                )
+
+            resolved_product = id_produto
+            if resolved_product is None:
+                resolved_product = self._resolve_harvest_product(
+                    session, colheita.id_plantio
+                )
+            if resolved_product is None:
+                raise EstoqueError(
+                    "Could not resolve harvested product; pass id_produto."
+                )
+
+            resolved_estoque = id_estoque
+            if resolved_estoque is None:
+                first = session.execute(
+                    select(EstoqueModel.id_estoque).order_by(EstoqueModel.id_estoque)
+                ).scalars().first()
+                if first is None:
+                    raise EstoqueError("No warehouse stock account configured.")
+                resolved_estoque = int(first)
+
+        return self.registrar_entrada_colheita(
+            EntradaColheitaCreateSchema(
+                id_colheita=id_colheita,
+                id_produto=resolved_product,
+                id_estoque=resolved_estoque,
+                quantidade=resolved_qty,
+            )
+        )
+
+    @staticmethod
+    def _resolve_harvest_product(session: Session, id_plantio: int) -> int | None:
+        """Prefer grain whose name matches the culture; fallback to planting product."""
+        plantio = session.get(PlantioRef, id_plantio)
+        if plantio is None:
+            return None
+        cultura = session.get(CulturaRef, plantio.id_cultura)
+        if cultura is not None:
+            row = session.execute(
+                select(ProdutoRef.id_produto)
+                .join(GraoRef, GraoRef.id_produto == ProdutoRef.id_produto)
+                .where(func.lower(ProdutoRef.nome) == cultura.nome.lower())
+            ).scalars().first()
+            if row is not None:
+                return int(row)
+            # partial match (e.g. culture "Milho Hibrido" vs product "Milho")
+            row = session.execute(
+                select(ProdutoRef.id_produto)
+                .join(GraoRef, GraoRef.id_produto == ProdutoRef.id_produto)
+                .where(func.lower(ProdutoRef.nome).like(f"%{cultura.nome.lower().split()[0]}%"))
+            ).scalars().first()
+            if row is not None:
+                return int(row)
+        return int(plantio.id_produto)
 
     def register_exit_from_sale(self, id_item_venda: int) -> None:
-        """Chamado por Vendas quando uma venda é confirmada.
-
-        Implementação futura:
-            - buscar o ItemVenda pelo `id_item_venda`;
-            - identificar estoque, produto, lote e quantidade;
-            - chamar `registrar_saida_venda(...)`.
-
-        Mantido como placeholder até a implementação do módulo de Vendas.
-        """
+        """Legacy hook: prefer register_exit_from_sale_allocation."""
         return None
+
+    def register_exit_from_sale_allocation(
+        self,
+        *,
+        id_item_venda: int,
+        id_estoque: int,
+        id_produto: int,
+        id_lote: int,
+        quantidade: Decimal,
+    ) -> MovimentacaoEstoqueReadSchema:
+        """Called by Commercial when a sale is confirmed (per lot allocation)."""
+        return self.registrar_saida_venda(
+            id_estoque=id_estoque,
+            id_produto=id_produto,
+            id_item_venda=id_item_venda,
+            quantidade=quantidade,
+            id_lote=id_lote,
+        )
 
     def register_exit_from_activity(self, id_atividade: int) -> None:
-        """Chamado por Atividades quando um consumo de insumo é confirmado.
-
-        Implementação futura:
-            - buscar os insumos consumidos pela atividade;
-            - identificar estoque, produto, lote e quantidade;
-            - chamar `registrar_saida_atividade(...)`.
-
-        Mantido como placeholder até a implementação do módulo de Atividades.
-        """
+        """Placeholder until agricultural activities push consumption details."""
         return None
+
+    def register_transfer(
+        self,
+        *,
+        id_estoque_origem: int,
+        id_estoque_destino: int,
+        id_produto: int,
+        id_lote: int,
+        quantidade: Decimal,
+    ) -> tuple[MovimentacaoEstoqueReadSchema, MovimentacaoEstoqueReadSchema]:
+        """Transfer quantity of a lot between stock accounts (logistics TRANSFERENCIA)."""
+        if id_estoque_origem == id_estoque_destino:
+            raise EstoqueError("Origin and destination stock must differ.")
+        self._assert_saldo_lote(id_estoque_origem, id_lote, quantidade)
+
+        try:
+            with get_session() as session:
+                saida = MovimentacaoEstoqueModel(
+                    id_estoque=id_estoque_origem,
+                    id_produto=id_produto,
+                    id_lote=id_lote,
+                    tipo_movimentacao=MovementType.TRANSFERENCIA.value,
+                    quantidade=quantidade,
+                    data_movimentacao=datetime.now(),
+                )
+                session.add(saida)
+                session.flush()
+                self._ajustar_saldo(session, id_estoque_origem, id_produto, -quantidade)
+                self._ajustar_saldo_lote(session, id_estoque_origem, id_lote, -quantidade)
+
+                entrada = MovimentacaoEstoqueModel(
+                    id_estoque=id_estoque_destino,
+                    id_produto=id_produto,
+                    id_lote=id_lote,
+                    tipo_movimentacao=MovementType.TRANSFERENCIA.value,
+                    quantidade=quantidade,
+                    data_movimentacao=datetime.now(),
+                )
+                session.add(entrada)
+                session.flush()
+                self._ajustar_saldo(session, id_estoque_destino, id_produto, quantidade)
+                self._ajustar_saldo_lote(session, id_estoque_destino, id_lote, quantidade)
+                session.flush()
+                id_saida = saida.id_movimentacao
+                id_entrada = entrada.id_movimentacao
+        except IntegrityError as exc:
+            raise EstoqueError("Could not register stock transfer.") from exc
+
+        out = self.movimentacao_repo.get_by_id(id_saida)
+        inn = self.movimentacao_repo.get_by_id(id_entrada)
+        if out is None or inn is None:
+            raise EstoqueError("Transfer movements not found after insert.")
+        return (
+            MovimentacaoEstoqueReadSchema.model_validate(out),
+            MovimentacaoEstoqueReadSchema.model_validate(inn),
+        )
+
+    def register_exit_from_dispatch(
+        self,
+        *,
+        id_estoque: int,
+        id_produto: int,
+        id_lote: int,
+        quantidade: Decimal,
+        id_item_venda: int | None = None,
+    ) -> MovimentacaoEstoqueReadSchema | None:
+        """Called by logistics when a load is shipped.
+
+        If the sale already exited stock on confirm, skip duplicate exit.
+        """
+        if id_item_venda is not None:
+            with get_session() as session:
+                existing = session.execute(
+                    select(SaidaVendaEstoqueModel).where(
+                        SaidaVendaEstoqueModel.id_item_venda == id_item_venda
+                    )
+                ).scalars().first()
+                if existing is not None:
+                    return None
+            return self.registrar_saida_venda(
+                id_estoque=id_estoque,
+                id_produto=id_produto,
+                id_item_venda=id_item_venda,
+                quantidade=quantidade,
+                id_lote=id_lote,
+            )
+        # Non-sale dispatch: ledger exit without sale satellite (transfer-like).
+        return self._registrar_saida_simples(
+            id_estoque=id_estoque,
+            id_produto=id_produto,
+            id_lote=id_lote,
+            quantidade=quantidade,
+            tipo=MovementType.TRANSFERENCIA.value,
+        )
+
+    def _registrar_saida_simples(
+        self,
+        *,
+        id_estoque: int,
+        id_produto: int,
+        id_lote: int | None,
+        quantidade: Decimal,
+        tipo: str,
+    ) -> MovimentacaoEstoqueReadSchema:
+        if id_lote is not None:
+            self._assert_saldo_lote(id_estoque, id_lote, quantidade)
+        else:
+            saldo = self.saldo_repo.get_by_estoque_produto(id_estoque, id_produto)
+            if saldo is None or saldo.quantidade_atual < quantidade:
+                raise EstoqueError("Insufficient stock balance for exit.")
+
+        try:
+            with get_session() as session:
+                movimentacao = MovimentacaoEstoqueModel(
+                    id_estoque=id_estoque,
+                    id_produto=id_produto,
+                    id_lote=id_lote,
+                    tipo_movimentacao=tipo,
+                    quantidade=quantidade,
+                    data_movimentacao=datetime.now(),
+                )
+                session.add(movimentacao)
+                session.flush()
+                self._ajustar_saldo(session, id_estoque, id_produto, -quantidade)
+                if id_lote is not None:
+                    self._ajustar_saldo_lote(session, id_estoque, id_lote, -quantidade)
+                session.flush()
+                id_movimentacao = movimentacao.id_movimentacao
+        except IntegrityError as exc:
+            raise EstoqueError("Could not register stock exit.") from exc
+
+        record = self.movimentacao_repo.get_by_id(id_movimentacao)
+        if record is None:
+            raise EstoqueError("Movement not found after insert.")
+        return MovimentacaoEstoqueReadSchema.model_validate(record)
+
+    def registrar_estorno_saida(
+        self,
+        *,
+        id_estoque: int,
+        id_produto: int,
+        id_lote: int | None,
+        quantidade: Decimal,
+    ) -> MovimentacaoEstoqueReadSchema:
+        """Reverses a previous activity/simple exit by restoring balance (ajuste)."""
+        if quantidade <= 0:
+            raise EstoqueError("Reversal quantity must be positive.")
+        try:
+            with get_session() as session:
+                movimentacao = MovimentacaoEstoqueModel(
+                    id_estoque=id_estoque,
+                    id_produto=id_produto,
+                    id_lote=id_lote,
+                    tipo_movimentacao=MovementType.AJUSTE.value,
+                    quantidade=quantidade,
+                    data_movimentacao=datetime.now(),
+                )
+                session.add(movimentacao)
+                session.flush()
+                self._ajustar_saldo(session, id_estoque, id_produto, quantidade)
+                if id_lote is not None:
+                    self._ajustar_saldo_lote(session, id_estoque, id_lote, quantidade)
+                session.flush()
+                id_movimentacao = movimentacao.id_movimentacao
+        except IntegrityError as exc:
+            raise EstoqueError("Could not reverse stock exit.") from exc
+
+        record = self.movimentacao_repo.get_by_id(id_movimentacao)
+        if record is None:
+            raise EstoqueError("Movement not found after insert.")
+        return MovimentacaoEstoqueReadSchema.model_validate(record)
 
     # ------------------------------------------------------------------
     # Recebimento de compra (entrada real)
@@ -154,39 +437,37 @@ class EstoqueService:
 
             try:
                 with get_session() as session:
-                    id_lote = None
-                    if payload.codigo_lote:
-                        lote_existente = self.lote_repo.get_by_codigo(payload.codigo_lote)
-                        if lote_existente is not None:
-                            if lote_existente.id_produto != item.id_produto:
-                                raise EstoqueError(
-                                    f"O código de lote '{payload.codigo_lote}' já está em uso "
-                                    f"para outro produto."
-                                )
-                            id_lote = lote_existente.id_lote
-                        else:
-                            lote = LoteModel(
-                                id_colheita=None,
-                                id_produto=item.id_produto,
-                                codigo_lote=payload.codigo_lote,
-                                validade=payload.validade_lote,
-                                qualidade=None,
+                    id_lote = payload.id_lote
+                    if id_lote is not None:
+                        lote_existente = session.get(LoteModel, id_lote)
+                        if lote_existente is None:
+                            raise EstoqueError("Lote selecionado nao encontrado.")
+                        if lote_existente.id_produto != item.id_produto:
+                            raise EstoqueError(
+                                "O lote selecionado pertence a outro produto."
                             )
-                            session.add(lote)
-                            session.flush()
-                            id_lote = lote.id_lote
+                    else:
+                        lote = self._create_lote_auto(
+                            session,
+                            id_produto=item.id_produto,
+                            tipo_origem=LotOriginType.COMPRA,
+                            validade=payload.validade_lote,
+                            quantidade_inicial=payload.quantidade_recebida,
+                        )
+                        id_lote = lote.id_lote
 
                     movimentacao = MovimentacaoEstoqueModel(
                         id_estoque=payload.id_estoque,
                         id_produto=item.id_produto,
                         id_lote=id_lote,
-                        tipo_movimentacao="entrada_compra",
+                        tipo_movimentacao=MovementType.ENTRADA_COMPRA.value,
                         quantidade=payload.quantidade_recebida,
                         data_movimentacao=data_recebimento,
                     )
                     session.add(movimentacao)
                     session.flush()
 
+                    # Legacy link kept for FK compatibility; recebimento_compra is canonical.
                     session.add(
                         EntradaEstoqueModel(
                             id_compra=compra.id_compra,
@@ -206,6 +487,13 @@ class EstoqueService:
                     self._ajustar_saldo(
                         session, payload.id_estoque, item.id_produto, payload.quantidade_recebida
                     )
+                    if id_lote is not None:
+                        self._ajustar_saldo_lote(
+                            session,
+                            payload.id_estoque,
+                            id_lote,
+                            payload.quantidade_recebida,
+                        )
 
                     session.flush()
                     id_recebimento = recebimento.id_recebimento
@@ -270,31 +558,25 @@ class EstoqueService:
             self, payload: EntradaColheitaCreateSchema
         ) -> EntradaColheitaReadSchema:
             """Registra a entrada no estoque de um produto colhido, criando o lote de origem."""
-            lote_existente = self.lote_repo.get_by_codigo(payload.codigo_lote)
-            if lote_existente is not None:
-                raise EstoqueError(
-                    f"O código de lote '{payload.codigo_lote}' já está em uso."
-                )
-
             data_entrada = payload.data_entrada or datetime.now()
 
             try:
                 with get_session() as session:
-                    lote = LoteModel(
-                        id_colheita=payload.id_colheita,
+                    lote = self._create_lote_auto(
+                        session,
                         id_produto=payload.id_produto,
-                        codigo_lote=payload.codigo_lote,
+                        id_colheita=payload.id_colheita,
+                        tipo_origem=LotOriginType.COLHEITA,
                         validade=payload.validade_lote,
                         qualidade=payload.qualidade_lote,
+                        quantidade_inicial=payload.quantidade,
                     )
-                    session.add(lote)
-                    session.flush()
 
                     movimentacao = MovimentacaoEstoqueModel(
                         id_estoque=payload.id_estoque,
                         id_produto=payload.id_produto,
                         id_lote=lote.id_lote,
-                        tipo_movimentacao="entrada_colheita",
+                        tipo_movimentacao=MovementType.ENTRADA_COLHEITA.value,
                         quantidade=payload.quantidade,
                         data_movimentacao=data_entrada,
                     )
@@ -309,6 +591,9 @@ class EstoqueService:
 
                     self._ajustar_saldo(
                         session, payload.id_estoque, payload.id_produto, payload.quantidade
+                    )
+                    self._ajustar_saldo_lote(
+                        session, payload.id_estoque, lote.id_lote, payload.quantidade
                     )
 
                     session.flush()
@@ -377,6 +662,10 @@ class EstoqueService:
             "update saldo_estoque set quantidade_atual = quantidade_atual - :quantidade "
             "where id_estoque = :id_estoque and id_produto = :id_produto"
         )
+        sql_update_saldo_lote = text(
+            "update saldo_lote set quantidade_atual = quantidade_atual - :quantidade "
+            "where id_estoque = :id_estoque and id_lote = :id_lote"
+        )
 
         try:
             with self._connection(conn) as c:
@@ -404,6 +693,15 @@ class EstoqueService:
                     sql_update_saldo,
                     {"quantidade": quantidade, "id_estoque": id_estoque, "id_produto": id_produto},
                 )
+                if id_lote is not None:
+                    c.execute(
+                        sql_update_saldo_lote,
+                        {
+                            "quantidade": quantidade,
+                            "id_estoque": id_estoque,
+                            "id_lote": id_lote,
+                        },
+                    )
         except IntegrityError as exc:
             raise EstoqueError(
                 "Não foi possível registrar a saída. Verifique os dados informados."
@@ -424,9 +722,12 @@ class EstoqueService:
         id_lote: int | None = None,
     ) -> MovimentacaoEstoqueReadSchema:
         """Registra a saída de estoque motivada pelo consumo em uma atividade agrícola."""
-        saldo = self.saldo_repo.get_by_estoque_produto(id_estoque, id_produto)
-        if saldo is None or saldo.quantidade_atual < quantidade:
-            raise EstoqueError("Saldo insuficiente para registrar a saída.")
+        if id_lote is not None:
+            self._assert_saldo_lote(id_estoque, id_lote, quantidade)
+        else:
+            saldo = self.saldo_repo.get_by_estoque_produto(id_estoque, id_produto)
+            if saldo is None or saldo.quantidade_atual < quantidade:
+                raise EstoqueError("Insufficient stock balance for activity exit.")
 
         try:
             with get_session() as session:
@@ -434,7 +735,7 @@ class EstoqueService:
                     id_estoque=id_estoque,
                     id_produto=id_produto,
                     id_lote=id_lote,
-                    tipo_movimentacao="saida_atividade",
+                    tipo_movimentacao=MovementType.SAIDA_ATIVIDADE.value,
                     quantidade=quantidade,
                     data_movimentacao=datetime.now(),
                 )
@@ -449,21 +750,35 @@ class EstoqueService:
                 )
 
                 self._ajustar_saldo(session, id_estoque, id_produto, -quantidade)
+                if id_lote is not None:
+                    self._ajustar_saldo_lote(session, id_estoque, id_lote, -quantidade)
                 session.flush()
                 id_movimentacao = movimentacao.id_movimentacao
         except IntegrityError as exc:
             raise EstoqueError(
-                "Não foi possível registrar a saída. Verifique os dados informados."
+                "Could not register activity exit. Check the provided data."
             ) from exc
 
         record = self.movimentacao_repo.get_by_id(id_movimentacao)
         if record is None:
-            raise EstoqueError("Movimentação não encontrada após o cadastro.")
+            raise EstoqueError("Movement not found after insert.")
         return MovimentacaoEstoqueReadSchema.model_validate(record)
 
     # ------------------------------------------------------------------
     # Saldo (helper interno)
     # ------------------------------------------------------------------
+
+    def _assert_saldo_lote(
+        self, id_estoque: int, id_lote: int, quantidade: Decimal
+    ) -> None:
+        saldo = self.saldo_lote_repo.get_by_estoque_lote(id_estoque, id_lote)
+        if saldo is None:
+            raise EstoqueError("Lot balance not found at the selected warehouse.")
+        disponivel = Decimal(str(saldo.quantidade_atual)) - Decimal(
+            str(saldo.quantidade_reservada)
+        )
+        if disponivel < quantidade:
+            raise EstoqueError("Insufficient lot balance for the requested quantity.")
 
     @staticmethod
     def _ajustar_saldo(session: Session, id_estoque: int, id_produto: int, delta: Decimal) -> None:
@@ -484,6 +799,33 @@ class EstoqueService:
             )
         else:
             saldo.quantidade_atual += delta
+
+    @staticmethod
+    def _ajustar_saldo_lote(
+        session: Session, id_estoque: int, id_lote: int, delta: Decimal
+    ) -> None:
+        saldo = (
+            session.query(SaldoLoteModel)
+            .filter_by(id_estoque=id_estoque, id_lote=id_lote)
+            .with_for_update()
+            .first()
+        )
+        if saldo is None:
+            if delta < 0:
+                raise EstoqueError("Lot balance not found for exit.")
+            session.add(
+                SaldoLoteModel(
+                    id_estoque=id_estoque,
+                    id_lote=id_lote,
+                    quantidade_atual=delta,
+                    quantidade_reservada=Decimal("0"),
+                )
+            )
+        else:
+            novo = Decimal(str(saldo.quantidade_atual)) + delta
+            if novo < 0:
+                raise EstoqueError("Lot balance would become negative.")
+            saldo.quantidade_atual = novo
 
     # ------------------------------------------------------------------
     # Consultas de saldo
@@ -587,12 +929,26 @@ class EstoqueService:
 
     def create_lote(self, payload: LoteCreateSchema) -> LoteReadSchema:
         try:
-            record = self.lote_repo.create(payload.model_dump())
+            with get_session() as session:
+                lote = self._create_lote_auto(
+                    session,
+                    id_produto=payload.id_produto,
+                    id_colheita=payload.id_colheita,
+                    tipo_origem=payload.tipo_origem,
+                    validade=payload.validade,
+                    qualidade=payload.qualidade,
+                    quantidade_inicial=payload.quantidade_inicial,
+                    status=payload.status,
+                )
+                id_lote = lote.id_lote
         except IntegrityError as exc:
             raise EstoqueError(
                 "Não foi possível criar o lote. Verifique os dados informados."
             ) from exc
-        return LoteReadSchema.model_validate(record)
+        record = self.get_lote_com_produto(id_lote)
+        if record is None:
+            raise EstoqueError("Lote nao encontrado apos o cadastro.")
+        return record
     
     def get_lote(self, id_lote: int) -> LoteReadSchema | None:
         record = self.lote_repo.get_by_id(id_lote)
@@ -877,8 +1233,13 @@ class EstoqueService:
 
     def list_lote_options(self) -> list[LoteOptionSchema]:
         return [
-            LoteOptionSchema(id_lote=id_lote, codigo_lote=codigo_lote, produto_nome=produto_nome)
-            for id_lote, codigo_lote, produto_nome in self.lookup_repo.list_lotes()
+            LoteOptionSchema(
+                id_lote=id_lote,
+                codigo_lote=codigo_lote,
+                id_produto=id_produto,
+                produto_nome=produto_nome,
+            )
+            for id_lote, codigo_lote, id_produto, produto_nome in self.lookup_repo.list_lotes()
         ]
 
     def list_certificacao_options(self) -> list[CertificacaoOptionSchema]:
@@ -889,6 +1250,10 @@ class EstoqueService:
 
     def list_item_pedido_options(self) -> list[ItemPedidoOptionSchema]:
         return [
-            ItemPedidoOptionSchema(id_item_pedido=id_item, descricao=descricao)
-            for id_item, descricao in self.lookup_repo.list_itens_pedido_pendentes()
+            ItemPedidoOptionSchema(
+                id_item_pedido=id_item,
+                id_produto=id_produto,
+                descricao=descricao,
+            )
+            for id_item, id_produto, descricao in self.lookup_repo.list_itens_pedido_pendentes()
         ]

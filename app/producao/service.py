@@ -757,7 +757,40 @@ class ProducaoService:
             raise ValueError("A data de fim da colheita nao pode ser anterior a data de inicio.")
         if dt_inicio is not None and plantio.dt_plantio is not None and dt_inicio < plantio.dt_plantio:
             raise ValueError("A colheita nao pode iniciar antes do plantio.")
+        self._assert_carencia_respeitada(id_plantio, dt_inicio)
         return self.repository.create_colheita(id_plantio, status, quantidade_colhida, dt_inicio, dt_fim)
+
+    def _assert_carencia_respeitada(
+        self, id_plantio: int, dt_inicio: date | None
+    ) -> None:
+        """Bloqueia colheita enquanto houver carencia de defensivo ativa no plantio."""
+        from sqlalchemy import text
+
+        from app.core.database import get_session
+
+        referencia = dt_inicio or date.today()
+        with get_session() as session:
+            row = session.execute(
+                text(
+                    """
+                    SELECT MAX(ad.dt_carencia) AS dt_carencia
+                    FROM aplicacao_defensivo ad
+                    JOIN controle_fitossanitario cf
+                      ON cf.id_controle = ad.id_controle
+                    WHERE cf.id_plantio = :id_plantio
+                      AND ad.dt_carencia IS NOT NULL
+                    """
+                ),
+                {"id_plantio": id_plantio},
+            ).first()
+        if row is None or row[0] is None:
+            return
+        dt_carencia = row[0]
+        if referencia < dt_carencia:
+            raise ValueError(
+                f"Nao e possivel colher: periodo de carencia ativo ate {dt_carencia.isoformat()} "
+                "devido a aplicacao de defensivo no plantio."
+            )
 
     def colher_plantio(
         self,
@@ -789,10 +822,33 @@ class ProducaoService:
         return self.repository.update_status_colheita(id_colheita, status)
 
     def iniciar_colheita(self, id_colheita: int) -> bool:
+        atual = self.repository.get_colheita_by_id(id_colheita)
+        if atual is None:
+            return False
+        self._assert_carencia_respeitada(atual.id_plantio, atual.dt_inicio)
         return self.update_status_colheita(id_colheita, StatusColheita.EM_ANDAMENTO)
 
-    def concluir_colheita(self, id_colheita: int) -> bool:
-        return self.update_status_colheita(id_colheita, StatusColheita.CONCLUIDA)
+    def concluir_colheita(
+        self,
+        id_colheita: int,
+        id_estoque: int | None = None,
+        id_produto: int | None = None,
+    ) -> bool:
+        ok = self.update_status_colheita(id_colheita, StatusColheita.CONCLUIDA)
+        if not ok:
+            return False
+        try:
+            from app.estoque.service import EstoqueService
+
+            EstoqueService().register_entry_from_harvest(
+                id_colheita,
+                id_estoque=id_estoque,
+                id_produto=id_produto,
+            )
+        except Exception:
+            # Harvest status already persisted; stock entry may be retried manually.
+            pass
+        return True
 
     def cancelar_colheita(self, id_colheita: int) -> bool:
         return self.update_status_colheita(id_colheita, StatusColheita.CANCELADA)

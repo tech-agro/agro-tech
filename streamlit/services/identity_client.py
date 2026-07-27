@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import requests
 import streamlit as st
 
@@ -9,6 +11,9 @@ from app.core.config import settings
 from app.identity.models import Usuario
 
 SESSION_KEY_TOKEN = "auth_token"
+
+# Set AUTH_DISABLED=true only for local bypass of Streamlit login gates.
+AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in {"1", "true", "yes"}
 
 
 def get_authorization_url() -> str:
@@ -40,7 +45,9 @@ def current_user() -> Usuario | None:
     return Usuario(**resposta.json())
 
 
-def require_login() -> Usuario:
+def require_login() -> Usuario | None:
+    if AUTH_DISABLED:
+        return current_user()
     usuario = current_user()
     if usuario is None:
         st.warning("Faca login para acessar esta pagina.")
@@ -48,7 +55,9 @@ def require_login() -> Usuario:
     return usuario
 
 
-def require_permission(descricao_permissao: str) -> Usuario:
+def require_permission(descricao_permissao: str) -> Usuario | None:
+    if AUTH_DISABLED:
+        return current_user()
     usuario = require_login()
     token = st.session_state[SESSION_KEY_TOKEN]
     resposta = requests.get(

@@ -398,9 +398,26 @@ with aba_producao:
                         f"Talhao e cultura vem do planejamento escolhido: "
                         f"talhao {planejamento_escolhido['id_talhao']}, cultura {planejamento_escolhido['id_cultura']}."
                     )
-                id_produto_plantio = st.number_input(
-                    "ID do produto (semente/muda, cadastrado no modulo Comercial)", min_value=1, step=1, key="plantio_id_produto"
-                )
+                id_produto_plantio = None
+                try:
+                    from services.comercial_client import CommercialClient
+
+                    _products = CommercialClient().list_products()
+                except Exception:
+                    _products = []
+                if _products:
+                    _pmap = {f"{p.nome} (#{p.id_produto})": p.id_produto for p in _products}
+                    _pchoice = st.selectbox("Produto (semente/muda)", list(_pmap.keys()), key="plantio_produto_sel")
+                    id_produto_plantio = _pmap[_pchoice]
+                else:
+                    id_produto_plantio = int(
+                        st.number_input(
+                            "ID do produto (semente/muda)",
+                            min_value=1,
+                            step=1,
+                            key="plantio_id_produto",
+                        )
+                    )
                 status_plantio_novo = st.selectbox("Status inicial", [s.value for s in StatusPlantio])
                 dt_plantio = st.date_input("Data de plantio", value=date.today(), key="plantio_dt_plantio")
                 if st.form_submit_button("Registrar plantio"):

@@ -3,25 +3,17 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING
+from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, Enum, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, Date, Enum, ForeignKey, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.base import Base
-from app.estoque.enum import StatusLote
-
-if TYPE_CHECKING:
-    from app.estoque.models.certificacao_lote import CertificacaoLoteModel
-    from app.estoque.models.consumo_insumo import ConsumoInsumoModel
-    from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
+from app.estoque.enum import LotOriginType, StatusLote
 
 
 class LoteModel(Base):
-    """Representa um lote de produto originado de uma colheita.
-
-    Corresponde à tabela `lote` no banco.
-    """
+    """Product lot used for agricultural traceability (harvest, purchase, etc.)."""
 
     __tablename__ = "lote"
 
@@ -57,6 +49,19 @@ class LoteModel(Base):
         default=StatusLote.LIBERADO,
         server_default=StatusLote.LIBERADO.value,
     )
+
+    tipo_origem: Mapped[LotOriginType] = mapped_column(
+        Enum(
+            LotOriginType,
+            name="tipo_origem_lote_enum",
+            create_type=False,
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+        default=LotOriginType.COMPRA,
+    )
+
+    quantidade_inicial: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
 
     def __repr__(self) -> str:
         return f"<LoteModel id={self.id_lote} codigo={self.codigo_lote!r}>"

@@ -19,8 +19,9 @@ from app.estoque.models.local_armazenamento import LocalArmazenamentoModel
 from app.estoque.models.lote import LoteModel
 from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
 from app.estoque.models.recebimento_compra import RecebimentoCompraModel
-from app.estoque.models.refs import CertificacaoRef, ColheitaRef
+from app.estoque.models.refs import CertificacaoRef, ColheitaRef, CulturaRef, GraoRef, PlantioRef
 from app.estoque.models.saldo_estoque import SaldoEstoqueModel
+from app.estoque.models.saldo_lote import SaldoLoteModel
 
 
 class LoteRepository(BaseRepository[LoteModel]):
@@ -299,6 +300,41 @@ class SaldoEstoqueRepository(BaseRepository[SaldoEstoqueModel]):
             )
 
 
+class SaldoLoteRepository(BaseRepository[SaldoLoteModel]):
+    model = SaldoLoteModel
+
+    def get_by_estoque_lote(
+        self, id_estoque: int, id_lote: int
+    ) -> SaldoLoteModel | None:
+        with get_session() as session:
+            record = (
+                session.query(SaldoLoteModel)
+                .filter_by(id_estoque=id_estoque, id_lote=id_lote)
+                .first()
+            )
+            if record is not None:
+                session.expunge(record)
+            return record
+
+    def list_available_by_produto(
+        self, id_produto: int
+    ) -> list[tuple[SaldoLoteModel, str, str | None]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(SaldoLoteModel, LoteModel.codigo_lote, ProdutoRef.nome)
+                .join(LoteModel, LoteModel.id_lote == SaldoLoteModel.id_lote)
+                .outerjoin(ProdutoRef, ProdutoRef.id_produto == LoteModel.id_produto)
+                .where(LoteModel.id_produto == id_produto)
+                .where(SaldoLoteModel.quantidade_atual > SaldoLoteModel.quantidade_reservada)
+                .order_by(LoteModel.codigo_lote)
+            ).all()
+            result: list[tuple[SaldoLoteModel, str, str | None]] = []
+            for saldo, codigo, nome in rows:
+                session.expunge(saldo)
+                result.append((saldo, codigo, nome))
+            return result
+
+
 class MovimentacaoEstoqueRepository(BaseRepository[MovimentacaoEstoqueModel]):
     """Somente leitura pela API — a criação é feita pelo service, nunca diretamente."""
 
@@ -493,16 +529,21 @@ class LookupRepository:
             ).all()
             return [(id_estoque, descricao) for id_estoque, descricao in rows]
 
-    def list_lotes(self) -> list[tuple[int, str, str | None]]:
+    def list_lotes(self) -> list[tuple[int, str, int | None, str | None]]:
         with get_session() as session:
             rows = session.execute(
-                select(LoteModel.id_lote, LoteModel.codigo_lote, ProdutoRef.nome)
+                select(
+                    LoteModel.id_lote,
+                    LoteModel.codigo_lote,
+                    LoteModel.id_produto,
+                    ProdutoRef.nome,
+                )
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == LoteModel.id_produto)
                 .order_by(LoteModel.codigo_lote)
             ).all()
             return [
-                (id_lote, codigo_lote, produto_nome)
-                for id_lote, codigo_lote, produto_nome in rows
+                (id_lote, codigo_lote, id_produto, produto_nome)
+                for id_lote, codigo_lote, id_produto, produto_nome in rows
             ]
 
     def list_certificacoes(self) -> list[tuple[int, str]]:
@@ -513,11 +554,16 @@ class LookupRepository:
             ).all()
             return [(id_certificacao, nome) for id_certificacao, nome in rows]
 
-    def list_itens_pedido_pendentes(self) -> list[tuple[int, str]]:
+    def list_itens_pedido_pendentes(self) -> list[tuple[int, int | None, str]]:
         """Itens de pedido ainda não totalmente atendidos, candidatos a recebimento."""
         with get_session() as session:
             rows = session.execute(
-                select(OrderItemModel.id_item, ProdutoRef.nome, OrderItemModel.quantidade)
+                select(
+                    OrderItemModel.id_item,
+                    OrderItemModel.id_produto,
+                    ProdutoRef.nome,
+                    OrderItemModel.quantidade,
+                )
                 .join(OrderModel, OrderModel.id_pedido == OrderItemModel.id_pedido)
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == OrderItemModel.id_produto)
                 .where(
@@ -528,6 +574,10 @@ class LookupRepository:
                 .order_by(OrderItemModel.id_item.desc())
             ).all()
             return [
-                (id_item, f"{produto_nome or 'Produto desconhecido'} — pedido de {quantidade}")
-                for id_item, produto_nome, quantidade in rows
+                (
+                    id_item,
+                    id_produto,
+                    f"{produto_nome or 'Produto desconhecido'} — pedido de {quantidade}",
+                )
+                for id_item, id_produto, produto_nome, quantidade in rows
             ]

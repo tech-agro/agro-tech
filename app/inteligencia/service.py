@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 
+from sqlalchemy import text
+
+from app.core.database import get_session
 from app.inteligencia.errors import (
     InteligenciaConflictError,
     InteligenciaNotFoundError,
@@ -229,3 +233,46 @@ class InteligenciaService:
             raise InteligenciaValidationError(
                 "data_fim deve ser maior ou igual a data_inicio."
             )
+
+    def register_logistics_kpi(
+        self,
+        *,
+        indicador_nome: str,
+        valor: Decimal | float | int = 1,
+        data_referencia: date | None = None,
+        unidade: str | None = None,
+    ) -> int | None:
+        """Called by Logistics to record operational performance metrics."""
+        with get_session() as session:
+            row = session.execute(
+                text("SELECT id_indicador FROM indicador WHERE nome = :nome LIMIT 1"),
+                {"nome": indicador_nome},
+            ).first()
+            if row is None:
+                row = session.execute(
+                    text(
+                        """
+                        INSERT INTO indicador (nome, unidade)
+                        VALUES (:nome, :unidade)
+                        RETURNING id_indicador
+                        """
+                    ),
+                    {"nome": indicador_nome, "unidade": unidade},
+                ).first()
+            id_indicador = int(row[0])
+            med = session.execute(
+                text(
+                    """
+                    INSERT INTO medicao_indicador (id_indicador, id_safra, valor, data_referencia)
+                    VALUES (:id_indicador, NULL, :valor, :data_referencia)
+                    RETURNING id_medicao
+                    """
+                ),
+                {
+                    "id_indicador": id_indicador,
+                    "valor": Decimal(str(valor)),
+                    "data_referencia": data_referencia or date.today(),
+                },
+            ).first()
+            return int(med[0]) if med is not None else None
+

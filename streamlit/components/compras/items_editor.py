@@ -234,12 +234,9 @@ def items_data_editor(
     }
     column_order = list(ITEM_COLUMNS)
     disabled_cols = [COL_UNIT]
+    # id_item fica no DataFrame so para persistencia (update/delete); nao aparece no form.
     if with_ids:
-        column_order = list(ITEM_COLUMNS_EDIT)
         disabled_cols = [COL_ITEM_ID, COL_UNIT]
-        column_config[COL_ITEM_ID] = st.column_config.NumberColumn(
-            "ID item", disabled=True, width="small", format="%d"
-        )
 
     edited = st.data_editor(
         base,
