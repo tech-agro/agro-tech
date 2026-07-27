@@ -95,6 +95,34 @@ def build_wordmark_svg(*, ink: str = LOGO_SIDEBAR) -> str:
     )
 
 
+LOGO_MEANING_PLAIN = (
+    "A logo da Agro Tech foi inspirada no sistema radicular da soja. "
+    "As linhas representam as raizes, simbolizando a origem, a integracao "
+    "e a rastreabilidade de toda a cadeia produtiva. As esferas distribuídas "
+    "ao longo das raizes representam os nodulos radiculares, estruturas "
+    "naturais da soja que abrigam bacterias responsaveis pela fixacao "
+    "biologica de nitrogenio, essencial para o desenvolvimento da planta. "
+    "Na identidade da Agro Tech, esses nodulos tambem simbolizam os dados "
+    "e os modulos do sistema, conectados por uma mesma base de informacoes. "
+    "Assim como a raiz sustenta e alimenta a planta, a plataforma integra "
+    "Producao, Estoque, Logistica, Comercial, Financeiro, Fitossanidade, Manutençao e Inteligencia, "
+    "fornecendo uma gestao unificada e rastreavel do agronegocio."
+)
+
+LOGO_MEANING_MARKDOWN = """
+A logo da **Agro Tech** foi inspirada no sistema radicular da soja. As linhas
+representam as raízes, simbolizando a origem, a integração e a rastreabilidade
+de toda a cadeia produtiva. As esferas distribuídas ao longo das raízes
+representam os **nódulos radiculares**, estruturas naturais da soja que
+abrigam bactérias responsáveis pela fixação biológica de nitrogênio, essencial
+para o desenvolvimento da planta. Na identidade da Agro Tech, esses nódulos
+também simbolizam os dados e os módulos do sistema, conectados por uma mesma
+base de informações. Assim como a raiz sustenta e alimenta a planta, a
+plataforma integra Produção, Estoque, Logística, Comercial, Financeiro, Fitossanidade, Manutenção e
+Inteligência, fornecendo uma gestão unificada e rastreável do agronegócio.
+"""
+
+
 def build_animated_document(
     *,
     width: int = 300,
@@ -131,7 +159,7 @@ def build_animated_document(
     width: 100%; height: 100%;
     display: flex; justify-content: center; align-items: center;
   }}
-  svg {{ display: block; }}
+  svg {{ display: block; cursor: help; }}
 
   .stroke {{
     fill: none;
@@ -192,6 +220,7 @@ def build_animated_document(
 <body>
 <svg class="{mode}" viewBox="{HERO_VIEWBOX}" width="{width}" height="auto"
      role="img" aria-label="Agro Tech" xmlns="http://www.w3.org/2000/svg">
+  <title>{LOGO_MEANING_PLAIN}</title>
   {"".join(paths)}
 
   <circle class="packet" r="3.1">

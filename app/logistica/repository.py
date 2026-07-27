@@ -285,7 +285,7 @@ class LogisticsLookupRepository:
             return list(rows)
 
     def list_sales(self) -> list[tuple[VendaRef, str | None]]:
-        """Comercial: vendas confirmadas ainda abertas para expedição/entrega."""
+        """Confirmed sales still open for shipping/delivery (from Comercial)."""
         from sqlalchemy import String, cast
 
         with get_session() as session:
