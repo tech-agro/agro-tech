@@ -45,6 +45,7 @@ class DespesaOperacaoLogisticaRef(Base):
     __table_args__ = {"extend_existing": True}
 
     id_despesa: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id_operacao: Mapped[int] = mapped_column(BigInteger, nullable=False)
     descricao: Mapped[str] = mapped_column(String(120), nullable=False)
     tipo: Mapped[str | None] = mapped_column(String(50))
     valor: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)

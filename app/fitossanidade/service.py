@@ -686,24 +686,13 @@ class PhytosanitaryService:
         volume: float | None,
         dt_aplicacao,
     ) -> None:
-        if volume is None or volume <= 0:
-            return
-        preco = self.lookup_repo.get_product_price(id_insumo)
-        if preco is None:
-            return
-        from decimal import Decimal
+        """Placeholder: conta_pagar ainda nao tem origem fitossanitaria no schema.
 
-        from app.financeiro.service import FinanceiroService
-
-        valor = Decimal(str(preco)) * Decimal(str(volume))
-        try:
-            FinanceiroService().register_phytosanitary_cost(
-                id_aplicacao=application_id,
-                valor=valor,
-                data_movimento=dt_aplicacao,
-            )
-        except Exception:
-            return
+        Quando houver FK/origem dedicada no Financeiro, registrar o custo
+        estimado (preco do insumo * volume) aqui.
+        """
+        _ = (application_id, id_insumo, volume, dt_aplicacao)
+        return None
 
     def list_applications(
         self, control_id: int

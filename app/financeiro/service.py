@@ -178,6 +178,67 @@ class FinanceiroService:
             )
         )
 
+    def receber_venda_confirmada(
+        self,
+        id_venda: int,
+        valor: Decimal,
+        data_venda: date | None = None,
+        **_: object,
+    ) -> ContaReceberReadSchema:
+        """Hook usado pelo Comercial ao confirmar uma venda."""
+        return self.create_conta_receber_from_venda(
+            id_venda=id_venda,
+            valor=Decimal(str(valor)),
+            vencimento=data_venda,
+        )
+
+    def register_logistics_cost(
+        self,
+        id_operacao: int,
+        valor: Decimal,
+        *,
+        descricao: str | None = None,
+        data_despesa: date | None = None,
+    ) -> ContaPagarReadSchema | None:
+        """Hook da Logística: cria despesa da operação e a conta a pagar."""
+        from sqlalchemy import select
+
+        from app.core.database import get_session
+        from app.financeiro.refs import DespesaOperacaoLogisticaRef
+
+        valor_dec = Decimal(str(valor))
+        if valor_dec <= 0:
+            return None
+
+        desc = descricao or f"Custo logistico operacao {id_operacao}"
+        movimento = data_despesa or date.today()
+
+        with get_session() as session:
+            existente = session.scalar(
+                select(DespesaOperacaoLogisticaRef).where(
+                    DespesaOperacaoLogisticaRef.id_operacao == id_operacao,
+                    DespesaOperacaoLogisticaRef.descricao == desc,
+                )
+            )
+            if existente is None:
+                existente = DespesaOperacaoLogisticaRef(
+                    id_operacao=id_operacao,
+                    descricao=desc,
+                    tipo="CUSTO_PREVISTO",
+                    valor=valor_dec,
+                    data_despesa=movimento,
+                )
+                session.add(existente)
+                session.flush()
+                session.refresh(existente)
+            id_despesa = int(existente.id_despesa)
+
+        return self.create_conta_pagar_from_despesa_logistica(
+            id_despesa_logistica=id_despesa,
+            valor=valor_dec,
+            vencimento=movimento,
+        )
+
     @staticmethod
     def _to_conta_pagar_read(
         conta,

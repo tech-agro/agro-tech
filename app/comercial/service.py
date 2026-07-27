@@ -343,10 +343,9 @@ class ComercialService:
 
         valor_total = sum((item.quantidade * item.valor_unitario for item in itens), Decimal("0"))
 
-        # Venda + baixa de estoque + conta a receber numa unica transacao: se
-        # qualquer etapa falhar (ex.: saldo insuficiente detectado so na baixa
-        # real), tudo e revertido — nunca fica uma venda "confirmada" sem
-        # estoque debitado ou sem registro financeiro.
+        # Venda + baixa de estoque numa unica transacao: se qualquer etapa
+        # falhar, tudo e revertido — nunca fica venda confirmada sem estoque
+        # debitado. O Financeiro roda apos o commit (sessao propria + FK).
         with pg_connector.pool.begin() as conn:
             resultado = self.repository.create_venda_com_itens(
                 id_cliente=id_cliente,
@@ -380,9 +379,13 @@ class ComercialService:
                     conn=conn,
                 )
 
-            self._financeiro().receber_venda_confirmada(
-                venda.id_venda, venda.valor_total, venda.data_venda, conn=conn
-            )
+        # Financeiro e Logistica rodam apos o commit da venda: os hooks usam
+        # sessao propria e precisam da venda ja persistida (FK).
+        self._financeiro().receber_venda_confirmada(
+            venda.id_venda,
+            Decimal(str(venda.valor_total)),
+            venda.data_venda,
+        )
 
         # Logistica: ainda placeholder documentado (sem veiculo/rota definidos
         # no momento da venda) — roda so depois da venda confirmada de verdade,

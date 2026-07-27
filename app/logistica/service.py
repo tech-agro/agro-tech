@@ -966,6 +966,8 @@ class LogisticsService:
 
     def _notify_financial(self, operation_id: int) -> None:
         """Financeiro: registra os custos logísticos da operação."""
+        from decimal import Decimal
+
         operation = self.operation_repo.get_by_id(operation_id)
         if operation is None or operation.custo_previsto is None:
             return
@@ -974,7 +976,7 @@ class LogisticsService:
 
             FinanceiroService().register_logistics_cost(
                 id_operacao=operation_id,
-                valor=operation.custo_previsto,
+                valor=Decimal(str(operation.custo_previsto)),
             )
             from app.inteligencia.service import InteligenciaService
 
