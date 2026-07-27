@@ -33,6 +33,9 @@ from components.shared.screens import (
     toast_error,
 )
 from services.logistica_client import LogisticsApiError, LogisticsClient
+from services.identity_client import require_login
+
+require_login()
 
 setup_page("Logistica", "Operacoes registram cargas; aba Cargas e consulta.")
 

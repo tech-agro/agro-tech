@@ -27,6 +27,9 @@ from components.shared.screens import (
     toast_error,
 )
 from services.comercial_client import ComercialApiError, ComercialClient
+from services.identity_client import require_login
+
+require_login()
 
 setup_page("Comercial", "Vendas, clientes, produtos e catálogo comercial.")
 

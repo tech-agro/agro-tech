@@ -10,6 +10,9 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 import streamlit as st
 
 from components.shared.screens import setup_page
+from services.identity_client import require_login
+
+require_login()
 
 setup_page("Financeiro")
 st.write("Pagina inicial do modulo Financeiro.")
