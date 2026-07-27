@@ -10,9 +10,28 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 import streamlit as st
 
 from components.shared.logo.widgets import apply_sidebar_logo, render_logo
+from services.identity_client import (
+    current_user,
+    get_authorization_url,
+    logout,
+    store_token,
+)
 
 st.set_page_config(page_title="Agro Tech", layout="wide")
 apply_sidebar_logo()
+
+query_params = st.query_params
+if "token" in query_params:
+    store_token(query_params["token"])
+    st.query_params.clear()
+    st.rerun()
+
+login_error = query_params.get("login_error")
+if login_error:
+    st.query_params.clear()
+    st.error(login_error)
+
+usuario = current_user()
 
 render_logo(width=320, animated=True, height=280)
 
@@ -29,4 +48,14 @@ st.markdown(
 )
 
 st.divider()
-st.caption("Use o menu lateral para navegar entre os modulos.")
+
+if usuario is None:
+    st.write("Faca login para acessar os modulos.")
+    st.link_button("Entrar com Google", get_authorization_url())
+else:
+    st.write(f"Bem-vindo(a), {usuario.nome}.")
+    st.write(f"Perfis: {', '.join(usuario.perfis) or 'nenhum'}")
+    st.caption("Use o menu lateral para navegar entre os modulos.")
+    if st.button("Sair"):
+        logout()
+        st.rerun()

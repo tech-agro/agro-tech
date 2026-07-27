@@ -8,11 +8,13 @@ from app.compras.controller import router as purchases_router
 from app.core.database import check_connection
 from app.identity.controller import router as identity_router
 from app.identity.controller import users_router
+from app.producao.controller import router as producao_router
 from app.estoque.controller import router as estoque_router
 
 app = FastAPI(title="Agro Tech API")
 app.include_router(identity_router)
 app.include_router(users_router)
+app.include_router(producao_router)
 app.include_router(purchases_router)
 app.include_router(estoque_router)
 
