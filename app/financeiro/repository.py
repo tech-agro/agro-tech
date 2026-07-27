@@ -531,6 +531,7 @@ class ContaReceberRepository(BaseRepository[ContaReceberModel]):
                         )
                     ).label("saldo"),
                 )
+                .select_from(ContaReceberModel)
                 .outerjoin(
                     VendaRef,
                     VendaRef.id_venda
@@ -634,6 +635,7 @@ class ContaReceberRepository(BaseRepository[ContaReceberModel]):
                         - func.coalesce(totais.c.valor_recebido, Decimal("0"))
                     ).label("saldo"),
                 )
+                .select_from(ContaReceberModel)
                 .outerjoin(
                     VendaRef,
                     VendaRef.id_venda == ContaReceberModel.id_venda,
@@ -956,6 +958,7 @@ class FinanceiroLookupRepository:
         with get_session() as session:
             rows = session.execute(
                 select(VendaRef.id_venda, VendaRef.valor_total, VendaRef.data_venda)
+                .select_from(VendaRef)
                 .outerjoin(
                     ContaReceberModel, ContaReceberModel.id_venda == VendaRef.id_venda
                 )
