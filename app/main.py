@@ -8,6 +8,7 @@ from app.comercial.controller import router as comercial_router
 from app.compras.controller import router as purchases_router
 from app.core.database import check_connection
 from app.estoque.controller import router as estoque_router
+from app.financeiro.controller import router as financeiro_router
 from app.fitossanidade.controller import router as phytosanitary_router
 from app.identity.controller import router as identity_router
 from app.identity.controller import users_router
@@ -15,8 +16,6 @@ from app.inteligencia.controller import router as inteligencia_router
 from app.logistica.controller import router as logistics_router
 from app.manutencao.controller import router as manutencao_router
 from app.producao.controller import router as producao_router
-from app.estoque.controller import router as estoque_router
-from app.financeiro.controller import router as financeiro_router
 
 app = FastAPI(title="Agro Tech API")
 app.include_router(identity_router)
@@ -26,6 +25,10 @@ app.include_router(producao_router)
 app.include_router(purchases_router)
 app.include_router(estoque_router)
 app.include_router(financeiro_router)
+app.include_router(inteligencia_router)
+app.include_router(comercial_router)
+app.include_router(phytosanitary_router)
+app.include_router(logistics_router)
 
 
 @app.get("/health")

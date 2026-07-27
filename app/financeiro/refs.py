@@ -19,6 +19,7 @@ class VendaRef(Base):
     """Representa minimamente uma venda."""
 
     __tablename__ = "venda"
+    __table_args__ = {"extend_existing": True}
 
     id_venda: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     valor_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
@@ -29,6 +30,7 @@ class ManutencaoRef(Base):
     """Representa minimamente uma manutenção."""
 
     __tablename__ = "manutencao"
+    __table_args__ = {"extend_existing": True}
 
     id_manutencao: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tipo: Mapped[str | None] = mapped_column(String(50))
@@ -40,6 +42,7 @@ class DespesaOperacaoLogisticaRef(Base):
     """Representa minimamente uma despesa de operação logística."""
 
     __tablename__ = "despesa_operacao_logistica"
+    __table_args__ = {"extend_existing": True}
 
     id_despesa: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     descricao: Mapped[str] = mapped_column(String(120), nullable=False)

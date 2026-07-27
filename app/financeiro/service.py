@@ -59,8 +59,6 @@ _STATUS_CONTA_RECEBER_ABERTOS = (
     StatusContaReceberEnum.PARCIALMENTE_RECEBIDA,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class FinanceiroService:
     """Casos de uso do módulo financeiro."""
