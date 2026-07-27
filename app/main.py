@@ -4,15 +4,21 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.compras.controller import router as purchases_router
 from app.core.database import check_connection
+from app.estoque.controller import router as estoque_router
 from app.identity.controller import router as identity_router
 from app.identity.controller import users_router
 from app.manutencao.controller import router as manutencao_router
+from app.producao.controller import router as producao_router
 
 app = FastAPI(title="Agro Tech API")
 app.include_router(identity_router)
 app.include_router(users_router)
 app.include_router(manutencao_router)
+app.include_router(producao_router)
+app.include_router(purchases_router)
+app.include_router(estoque_router)
 
 
 @app.get("/health")

@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
+_STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
+if str(_STREAMLIT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_STREAMLIT_ROOT))
+
 import streamlit as st
 
-from app.identity.streamlit_client import require_login
-from app.manutencao import streamlit_client as api
+from components.shared.screens import setup_page
+from services import manutencao_client as api
+from services.identity_client import require_login
 
 STATUS_MAQUINA = ["DISPONIVEL", "EM_USO", "EM_MANUTENCAO", "INATIVA"]
 STATUS_ORDEM = ["ABERTA", "EM_EXECUCAO", "CONCLUIDA", "CANCELADA"]
@@ -255,10 +263,9 @@ def _render_ordens_servico() -> None:
                     st.error(str(exc))
 
 
-st.title("Manutencao")
-st.caption("Gestao de maquinas e ordens de servico.")
-
 require_login()
+
+setup_page("Manutencao", "Gestao de maquinas e ordens de servico.")
 
 tab_maquinas, tab_ordens = st.tabs(["Maquinas", "Ordens de servico"])
 
