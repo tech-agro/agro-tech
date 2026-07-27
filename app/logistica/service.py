@@ -10,6 +10,21 @@ class LogisticaService:
     def __init__(self, repository: LogisticaRepository | None = None) -> None:
         self.repository = repository or LogisticaRepository()
 
+    # ------------------------------------------------------------------
+    # Hooks chamados por outros modulos
+    # ------------------------------------------------------------------
+
+    def receber_venda_confirmada(self, id_venda: int) -> None:
+        """Chamado pela Comercial quando uma venda e confirmada.
+
+        Implementacao futura:
+            - abrir uma `operacao_logistica` (ordem de carregamento) vinculada
+              a venda, com veiculo e rota a definir.
+
+        Mantido como placeholder ate a implementacao do modulo Logistica.
+        """
+        return None
+
     def create(self, payload):
         """Valida entrada e delega persistencia ao repositorio."""
         raise NotImplementedError

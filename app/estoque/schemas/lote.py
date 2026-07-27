@@ -6,6 +6,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.estoque.enum import StatusLote
+
 
 class LoteCreateSchema(BaseModel):
     id_colheita: int | None = None
@@ -13,11 +15,13 @@ class LoteCreateSchema(BaseModel):
     codigo_lote: str = Field(min_length=1, max_length=120)
     validade: date | None = None
     qualidade: str | None = Field(default=None, max_length=80)
+    status: StatusLote = StatusLote.LIBERADO
 
 
 class LoteUpdateSchema(BaseModel):
     validade: date | None = None
     qualidade: str | None = Field(default=None, max_length=80)
+    status: StatusLote | None = None
 
 
 class LoteReadSchema(BaseModel):
@@ -29,4 +33,5 @@ class LoteReadSchema(BaseModel):
     codigo_lote: str
     validade: date | None
     qualidade: str | None
+    status: StatusLote
     produto_nome: str | None = None

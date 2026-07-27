@@ -4,23 +4,14 @@ from __future__ import annotations
 
 from app.financeiro.service import FinanceiroService
 
+
 class FinanceiroController:
-    """Adaptador entre interface e service."""
+    """Adaptador entre interface e service.
+
+    Sem router HTTP por enquanto: nenhuma rota chama este modulo hoje, ele so e
+    usado internamente pelo hook `receber_venda_confirmada` (chamado direto por
+    ComercialService.registrar_venda).
+    """
 
     def __init__(self, service: FinanceiroService | None = None) -> None:
         self.service = service or FinanceiroService()
-
-    def create(self, payload):
-        return self.service.create(payload)
-
-    def get_by_id(self, entity_id: int):
-        return self.service.get_by_id(entity_id)
-
-    def list(self, filters=None):
-        return self.service.list(filters)
-
-    def update(self, entity_id: int, payload):
-        return self.service.update(entity_id, payload)
-
-    def delete(self, entity_id: int):
-        return self.service.delete(entity_id)

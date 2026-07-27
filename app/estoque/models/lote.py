@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Date, ForeignKey, String
+from sqlalchemy import BigInteger, Date, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
+from app.estoque.enum import StatusLote
 
 if TYPE_CHECKING:
     from app.estoque.models.certificacao_lote import CertificacaoLoteModel
@@ -44,6 +45,18 @@ class LoteModel(Base):
     validade: Mapped[date | None] = mapped_column(Date)
 
     qualidade: Mapped[str | None] = mapped_column(String(80))
+
+    status: Mapped[StatusLote] = mapped_column(
+        Enum(
+            StatusLote,
+            name="status_lote_enum",
+            create_type=False,
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+        default=StatusLote.LIBERADO,
+        server_default=StatusLote.LIBERADO.value,
+    )
 
     def __repr__(self) -> str:
         return f"<LoteModel id={self.id_lote} codigo={self.codigo_lote!r}>"

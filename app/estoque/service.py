@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.compras.enum import OrderStatus
 from app.compras.repository import OrderItemRepository, OrderRepository, PurchaseRepository
-from app.core.database import get_session
+from app.core.database import get_session, pg_connector
 
 from app.estoque.errors import EstoqueError
 from app.estoque.models.entrada_colheita_estoque import EntradaColheitaEstoqueModel
@@ -19,7 +21,6 @@ from app.estoque.models.lote import LoteModel
 from app.estoque.models.movimentacao_estoque import MovimentacaoEstoqueModel
 from app.estoque.models.recebimento_compra import RecebimentoCompraModel
 from app.estoque.models.saida_estoque import SaidaEstoqueModel
-from app.estoque.models.saida_venda_estoque import SaidaVendaEstoqueModel
 from app.estoque.models.saldo_estoque import SaldoEstoqueModel
 from app.estoque.repository import (
     CertificacaoLoteRepository,
@@ -327,6 +328,17 @@ class EstoqueService:
     # Saída por venda
     # ------------------------------------------------------------------
 
+    @contextmanager
+    def _connection(self, conn=None):
+        """Reutiliza uma conexao/transacao existente (para participar da mesma
+        transacao de quem chamou, ex. ComercialService.registrar_venda) ou abre
+        uma nova (uso standalone)."""
+        if conn is not None:
+            yield conn
+        else:
+            with pg_connector.pool.begin() as new_conn:
+                yield new_conn
+
     def registrar_saida_venda(
         self,
         id_estoque: int,
@@ -334,44 +346,70 @@ class EstoqueService:
         id_item_venda: int,
         quantidade: Decimal,
         id_lote: int | None = None,
+        conn=None,
     ) -> MovimentacaoEstoqueReadSchema:
-        """Registra a saída de estoque motivada por uma venda."""
-        saldo = self.saldo_repo.get_by_estoque_produto(id_estoque, id_produto)
-        if saldo is None or saldo.quantidade_atual < quantidade:
-            raise EstoqueError("Saldo insuficiente para registrar a saída.")
+        """Registra a saída de estoque motivada por uma venda.
+
+        Usa SQL puro (em vez do padrão ORM do restante do módulo) para poder
+        participar, via `conn`, da mesma transação de
+        `ComercialService.registrar_venda`: se a baixa falhar, a venda inteira
+        (e a conta a receber) é revertida junto.
+        """
+        sql_check = text(
+            "select quantidade_atual from saldo_estoque "
+            "where id_estoque = :id_estoque and id_produto = :id_produto for update"
+        )
+        sql_insert_mov = text(
+            """
+            insert into movimentacao_estoque
+                (id_estoque, id_produto, id_lote, tipo_movimentacao, quantidade, data_movimentacao)
+            values
+                (:id_estoque, :id_produto, :id_lote, 'saida_venda', :quantidade, :data_movimentacao)
+            returning id_movimentacao, id_estoque, id_produto, id_lote, tipo_movimentacao,
+                      quantidade, data_movimentacao
+            """
+        )
+        sql_insert_saida = text(
+            "insert into saida_venda_estoque (id_movimentacao, id_item_venda) "
+            "values (:id_movimentacao, :id_item_venda)"
+        )
+        sql_update_saldo = text(
+            "update saldo_estoque set quantidade_atual = quantidade_atual - :quantidade "
+            "where id_estoque = :id_estoque and id_produto = :id_produto"
+        )
 
         try:
-            with get_session() as session:
-                movimentacao = MovimentacaoEstoqueModel(
-                    id_estoque=id_estoque,
-                    id_produto=id_produto,
-                    id_lote=id_lote,
-                    tipo_movimentacao="saida_venda",
-                    quantidade=quantidade,
-                    data_movimentacao=datetime.now(),
-                )
-                session.add(movimentacao)
-                session.flush()
+            with self._connection(conn) as c:
+                saldo_atual = c.execute(
+                    sql_check, {"id_estoque": id_estoque, "id_produto": id_produto}
+                ).scalar_one_or_none()
+                if saldo_atual is None or saldo_atual < quantidade:
+                    raise EstoqueError("Saldo insuficiente para registrar a saída.")
 
-                session.add(
-                    SaidaVendaEstoqueModel(
-                        id_movimentacao=movimentacao.id_movimentacao,
-                        id_item_venda=id_item_venda,
-                    )
+                row = c.execute(
+                    sql_insert_mov,
+                    {
+                        "id_estoque": id_estoque,
+                        "id_produto": id_produto,
+                        "id_lote": id_lote,
+                        "quantidade": quantidade,
+                        "data_movimentacao": datetime.now(),
+                    },
+                ).one()
+                c.execute(
+                    sql_insert_saida,
+                    {"id_movimentacao": row.id_movimentacao, "id_item_venda": id_item_venda},
                 )
-
-                self._ajustar_saldo(session, id_estoque, id_produto, -quantidade)
-                session.flush()
-                id_movimentacao = movimentacao.id_movimentacao
+                c.execute(
+                    sql_update_saldo,
+                    {"quantidade": quantidade, "id_estoque": id_estoque, "id_produto": id_produto},
+                )
         except IntegrityError as exc:
             raise EstoqueError(
                 "Não foi possível registrar a saída. Verifique os dados informados."
             ) from exc
 
-        record = self.movimentacao_repo.get_by_id(id_movimentacao)
-        if record is None:
-            raise EstoqueError("Movimentação não encontrada após o cadastro.")
-        return MovimentacaoEstoqueReadSchema.model_validate(record)
+        return MovimentacaoEstoqueReadSchema(**row._mapping)
 
     # ------------------------------------------------------------------
     # Saída por atividade agrícola (consumo)
