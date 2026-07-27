@@ -1,7 +1,28 @@
-"""Schema da entidade ordem_servico."""
+from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import Literal
 
-@dataclass(slots=True)
-class OrdemServicoSchema:
-    pass
+from pydantic import BaseModel, ConfigDict
+
+StatusOrdemServico = Literal["ABERTA", "EM_EXECUCAO", "CONCLUIDA", "CANCELADA"]
+
+
+class OrdemServicoCreateSchema(BaseModel):
+    id_manutencao: int
+    descricao: str | None = None
+    status: StatusOrdemServico
+
+
+class OrdemServicoUpdateSchema(BaseModel):
+    id_manutencao: int | None = None
+    descricao: str | None = None
+    status: StatusOrdemServico | None = None
+
+
+class OrdemServicoReadSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_ordem_servico: int
+    id_manutencao: int
+    descricao: str | None
+    status: str
