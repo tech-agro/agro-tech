@@ -1,12 +1,20 @@
-"""Enums do domínio financeiro (espelham tipos ENUM do Postgres)."""
+"""Enums utilizados pelo módulo financeiro."""
 
-from __future__ import annotations
-
-import enum
+from enum import Enum
 
 
-class StatusContaReceber(str, enum.Enum):
-    """Mirrors status_conta_receber_enum in the database."""
+class StatusContaPagarEnum(str, Enum):
+    """Status possíveis para uma conta a pagar."""
+
+    ABERTA = "ABERTA"
+    PARCIALMENTE_PAGA = "PARCIALMENTE_PAGA"
+    PAGA = "PAGA"
+    VENCIDA = "VENCIDA"
+    CANCELADA = "CANCELADA"
+
+
+class StatusContaReceberEnum(str, Enum):
+    """Status possíveis para uma conta a receber."""
 
     ABERTA = "ABERTA"
     PARCIALMENTE_RECEBIDA = "PARCIALMENTE_RECEBIDA"
