@@ -35,7 +35,6 @@ class DespesaLogisticaOptionSchema(BaseModel):
 
     id_despesa: int
     label: str
-    descricao: str
     valor: Decimal
 
 
