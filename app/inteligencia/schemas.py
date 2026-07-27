@@ -50,3 +50,17 @@ class MedicaoIndicadorReadSchema(BaseModel):
     data_referencia: date | None
     indicador_nome: str | None = None
     safra_nome: str | None = None
+
+
+class IndicadorAgregacaoSchema(BaseModel):
+    id_indicador: int
+    indicador_nome: str | None = None
+    id_safra: int | None = None
+    safra_nome: str | None = None
+    data_inicio: date | None = None
+    data_fim: date | None = None
+    total_medicoes: int
+    valor_medio: Decimal | None = None
+    valor_minimo: Decimal | None = None
+    valor_maximo: Decimal | None = None
+    valor_soma: Decimal | None = None
