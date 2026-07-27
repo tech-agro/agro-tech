@@ -10,7 +10,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base import Base
 
 if TYPE_CHECKING:
-    from app.estoque.models.tipo_maquina import TipoMaquinaModel
+    from app.manutencao.models.manutencao import ManutencaoModel
+    from app.manutencao.models.plano_manutencao import PlanoManutencaoModel
+    from app.manutencao.models.tipo_maquina import TipoMaquinaModel
 
 
 class MaquinaModel(Base):
@@ -46,6 +48,14 @@ class MaquinaModel(Base):
     # Relacionamentos
     tipo_maquina: Mapped["TipoMaquinaModel"] = relationship(
         back_populates="maquinas"
+    )
+
+    manutencoes: Mapped[list["ManutencaoModel"]] = relationship(
+        back_populates="maquina",
+    )
+
+    planos_manutencao: Mapped[list["PlanoManutencaoModel"]] = relationship(
+        back_populates="maquina",
     )
 
     def __repr__(self) -> str:

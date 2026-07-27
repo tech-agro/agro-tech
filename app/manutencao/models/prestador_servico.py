@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base import Base
 
 if TYPE_CHECKING:
-    from app.estoque.models.manutencao import ManutencaoModel
+    from app.manutencao.models.manutencao import ManutencaoModel
 
 
 class PrestadorServicoModel(Base):
