@@ -65,6 +65,7 @@ class OrderItemRepository(BaseRepository[OrderItemModel]):
         with get_session() as session:
             rows = session.execute(
                 select(OrderItemModel, ProdutoRef.nome, UnidadeMedidaRef.sigla)
+                .select_from(OrderItemModel)
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == OrderItemModel.id_produto)
                 .outerjoin(
                     UnidadeMedidaRef, UnidadeMedidaRef.id_unidade == ProdutoRef.id_unidade
@@ -84,6 +85,7 @@ class OrderItemRepository(BaseRepository[OrderItemModel]):
         with get_session() as session:
             row = session.execute(
                 select(OrderItemModel, ProdutoRef.nome, UnidadeMedidaRef.sigla)
+                .select_from(OrderItemModel)
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == OrderItemModel.id_produto)
                 .outerjoin(
                     UnidadeMedidaRef, UnidadeMedidaRef.id_unidade == ProdutoRef.id_unidade
@@ -114,13 +116,16 @@ class PurchaseLookupRepository:
         with get_session() as session:
             rows = session.execute(
                 select(ProdutoRef, UnidadeMedidaRef)
+                .select_from(ProdutoRef)
                 .join(UnidadeMedidaRef, UnidadeMedidaRef.id_unidade == ProdutoRef.id_unidade)
                 .order_by(ProdutoRef.nome)
             ).all()
             result: list[tuple[ProdutoRef, UnidadeMedidaRef]] = []
             for produto, unidade in rows:
                 session.expunge(produto)
-                session.expunge(unidade)
+                # Same UnidadeMedidaRef instance is reused when products share a unit.
+                if unidade in session:
+                    session.expunge(unidade)
                 result.append((produto, unidade))
             return result
 

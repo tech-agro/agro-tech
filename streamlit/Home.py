@@ -9,6 +9,7 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 
 import streamlit as st
 
+from components.shared.logo.svg import LOGO_MEANING_MARKDOWN
 from components.shared.logo.widgets import apply_sidebar_logo, render_logo
 from services.identity_client import (
     current_user,
@@ -33,7 +34,7 @@ if login_error:
 
 usuario = current_user()
 
-render_logo(width=320, animated=True, height=280)
+render_logo(width=420, animated=True, height=380)
 
 st.markdown(
     """
@@ -46,6 +47,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+_left, mid, _right = st.columns([4, 2, 4])
+with mid:
+    with st.popover("Sobre a logo", use_container_width=True):
+        st.markdown(LOGO_MEANING_MARKDOWN)
 
 st.divider()
 

@@ -27,7 +27,7 @@ Para recriar o banco do zero:
 
 ```bash
 docker compose down -v
-docker compose up --build
+docker compose up -d --build
 ```
 
 ## Acessar aplicação

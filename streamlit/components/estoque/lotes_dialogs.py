@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.estoque.enum import StatusLote
 from app.estoque.schemas.lote import LoteUpdateSchema
 from components.estoque.dialog_state import clear_dialog_state, get_dialog
 from services.estoque_client import EstoqueApiError, EstoqueClient
 
 
 client = EstoqueClient()
+
+_STATUS_LABELS = {
+    StatusLote.EM_ANALISE: "Em análise",
+    StatusLote.LIBERADO: "Liberado",
+    StatusLote.BLOQUEADO: "Bloqueado",
+}
 
 
 def render(scope: str) -> None:
@@ -53,6 +60,7 @@ def _view_dialog(scope: str, id_lote: int) -> None:
         disabled=True,
     )
     st.text_input("Qualidade", lote.qualidade or "", disabled=True)
+    st.text_input("Status", _STATUS_LABELS.get(lote.status, lote.status.value), disabled=True)
 
     if st.button("Fechar", use_container_width=True):
         clear_dialog_state(scope, id_lote)
@@ -80,6 +88,13 @@ def _edit_dialog(scope: str, id_lote: int) -> None:
         value=lote.qualidade or "",
     )
 
+    status = st.selectbox(
+        "Status",
+        options=list(StatusLote),
+        index=list(StatusLote).index(lote.status),
+        format_func=lambda s: _STATUS_LABELS.get(s, s.value),
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -102,6 +117,7 @@ def _edit_dialog(scope: str, id_lote: int) -> None:
         payload = LoteUpdateSchema(
             validade=validade,
             qualidade=qualidade.strip() or None,
+            status=status,
         )
 
         try:

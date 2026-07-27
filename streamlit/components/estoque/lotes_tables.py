@@ -5,8 +5,11 @@ from __future__ import annotations
 import pandas as pd
 
 
+_STATUS_LABELS = {"EM_ANALISE": "Em análise", "LIBERADO": "Liberado", "BLOQUEADO": "Bloqueado"}
+
+
 def lotes_df(lotes) -> pd.DataFrame:
-    columns = ["ID", "Código", "Produto", "Validade", "Qualidade"]
+    columns = ["ID", "Código", "Produto", "Validade", "Qualidade", "Status"]
     if not lotes:
         return pd.DataFrame(columns=columns)
     return pd.DataFrame(
@@ -17,6 +20,7 @@ def lotes_df(lotes) -> pd.DataFrame:
                 "Produto": l.produto_nome or f"#{l.id_produto}",
                 "Validade": l.validade.strftime("%d/%m/%Y") if l.validade else "",
                 "Qualidade": l.qualidade or "",
+                "Status": _STATUS_LABELS.get(l.status.value, l.status.value),
             }
             for l in lotes
         ]
