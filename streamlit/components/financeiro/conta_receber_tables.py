@@ -13,23 +13,35 @@ def contas_receber_dataframe(
 ) -> pd.DataFrame:
     """Converte contas a receber para tabela Streamlit."""
 
-    rows = []
+    columns = [
+        "ID",
+        "Venda",
+        "Valor",
+        "Recebido",
+        "Saldo",
+        "Vencimento",
+        "Status",
+    ]
 
-    for conta in contas:
-        rows.append(
+    if not contas:
+        return pd.DataFrame(columns=columns)
+
+    return pd.DataFrame(
+        [
             {
                 "ID": conta.id_conta_receber,
                 "Venda": conta.id_venda,
                 "Valor": format_money(float(conta.valor)),
-                "Recebido": format_money(
-                    float(conta.valor_recebido)
+                "Recebido": format_money(float(conta.valor_recebido)),
+                "Saldo": format_money(float(conta.saldo)),
+                "Vencimento": (
+                    conta.vencimento.strftime("%d/%m/%Y")
+                    if conta.vencimento
+                    else ""
                 ),
-                "Saldo": format_money(
-                    float(conta.saldo)
-                ),
-                "Vencimento": conta.vencimento,
-                "Status": conta.status.value,
+                "Status": conta.status.value if conta.status else "",
             }
-        )
-
-    return pd.DataFrame(rows)
+            for conta in contas
+        ],
+        columns=columns,
+    )

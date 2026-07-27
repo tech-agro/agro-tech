@@ -322,6 +322,7 @@ class SaldoLoteRepository(BaseRepository[SaldoLoteModel]):
         with get_session() as session:
             rows = session.execute(
                 select(SaldoLoteModel, LoteModel.codigo_lote, ProdutoRef.nome)
+                .select_from(SaldoLoteModel)
                 .join(LoteModel, LoteModel.id_lote == SaldoLoteModel.id_lote)
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == LoteModel.id_produto)
                 .where(LoteModel.id_produto == id_produto)
@@ -379,6 +380,7 @@ class MovimentacaoEstoqueRepository(BaseRepository[MovimentacaoEstoqueModel]):
         with get_session() as session:
             rows = session.execute(
                 select(MovimentacaoEstoqueModel, ProdutoRef.nome, LoteModel.codigo_lote)
+                .select_from(MovimentacaoEstoqueModel)
                 .outerjoin(ProdutoRef, ProdutoRef.id_produto == MovimentacaoEstoqueModel.id_produto)
                 .outerjoin(LoteModel, LoteModel.id_lote == MovimentacaoEstoqueModel.id_lote)
                 .where(MovimentacaoEstoqueModel.id_estoque == id_estoque)

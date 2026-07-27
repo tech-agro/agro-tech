@@ -94,6 +94,10 @@ def data_table(
     Do not pass theme=\"streamlit\": that string theme stays light and breaks
     dark mode. Omitting theme lets recent streamlit-aggrid follow Streamlit.
     """
+    if df.columns.empty:
+        st.info("Nenhum registro para exibir.")
+        return []
+
     builder = GridOptionsBuilder.from_dataframe(df)
     builder.configure_selection("single", use_checkbox=True)
     builder.configure_pagination(
