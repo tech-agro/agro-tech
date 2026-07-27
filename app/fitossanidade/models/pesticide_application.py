@@ -10,6 +10,7 @@ from app.core.base import Base
 
 class PesticideApplicationModel(Base):
     __tablename__ = "aplicacao_defensivo"
+    __table_args__ = {"extend_existing": True}
 
     id_aplicacao: Mapped[int] = mapped_column(primary_key=True)
     id_controle: Mapped[int] = mapped_column(

@@ -22,9 +22,11 @@ from app.financeiro.models import (
     ConfiguracaoFinanceiraModel,
 )
 from app.financeiro.refs import (
-    VendaRef,
-    ManutencaoRef,
+    AplicacaoDefensivoRef,
     DespesaOperacaoLogisticaRef,
+    ManutencaoRef,
+    ProdutoPrecoRef,
+    VendaRef,
 )
 
 _STATUS_CONTA_PAGAR_ABERTOS = (
@@ -106,6 +108,8 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                     DespesaOperacaoLogisticaRef.descricao,
                     DespesaOperacaoLogisticaRef.tipo,
                     DespesaOperacaoLogisticaRef.data_despesa,
+                    ProdutoPrecoRef.nome,
+                    AplicacaoDefensivoRef.dt_aplicacao,
                     func.coalesce(
                         totais.c.valor_pago,
                         Decimal("0"),
@@ -118,6 +122,7 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                         )
                     ).label("saldo"),
                 )
+                .select_from(ContaPagarModel)
                 .outerjoin(
                     PurchaseModel,
                     PurchaseModel.id_compra == ContaPagarModel.id_compra,
@@ -130,6 +135,15 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                     DespesaOperacaoLogisticaRef,
                     DespesaOperacaoLogisticaRef.id_despesa
                     == ContaPagarModel.id_despesa_logistica,
+                )
+                .outerjoin(
+                    AplicacaoDefensivoRef,
+                    AplicacaoDefensivoRef.id_aplicacao
+                    == ContaPagarModel.id_aplicacao,
+                )
+                .outerjoin(
+                    ProdutoPrecoRef,
+                    ProdutoPrecoRef.id_produto == AplicacaoDefensivoRef.id_insumo,
                 )
                 .outerjoin(
                     totais,
@@ -186,10 +200,17 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 despesa_descricao,
                 despesa_tipo,
                 despesa_data,
+                aplicacao_insumo,
+                aplicacao_data,
                 valor_pago,
                 saldo,
             ) in rows:
                 session.expunge(conta)
+
+                if despesa_descricao is None and conta.id_aplicacao is not None:
+                    despesa_descricao = aplicacao_insumo or f"Aplicacao #{conta.id_aplicacao}"
+                    despesa_tipo = "FITOSANIDADE"
+                    despesa_data = aplicacao_data
 
                 result.append(
                     (
@@ -245,12 +266,15 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                     DespesaOperacaoLogisticaRef.descricao,
                     DespesaOperacaoLogisticaRef.tipo,
                     DespesaOperacaoLogisticaRef.data_despesa,
+                    ProdutoPrecoRef.nome,
+                    AplicacaoDefensivoRef.dt_aplicacao,
                     func.coalesce(totais.c.valor_pago, Decimal("0")).label("valor_pago"),
                     (
                         ContaPagarModel.valor
                         - func.coalesce(totais.c.valor_pago, Decimal("0"))
                     ).label("saldo"),
                 )
+                .select_from(ContaPagarModel)
                 .outerjoin(
                     PurchaseModel,
                     PurchaseModel.id_compra == ContaPagarModel.id_compra,
@@ -263,6 +287,15 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                     DespesaOperacaoLogisticaRef,
                     DespesaOperacaoLogisticaRef.id_despesa
                     == ContaPagarModel.id_despesa_logistica,
+                )
+                .outerjoin(
+                    AplicacaoDefensivoRef,
+                    AplicacaoDefensivoRef.id_aplicacao
+                    == ContaPagarModel.id_aplicacao,
+                )
+                .outerjoin(
+                    ProdutoPrecoRef,
+                    ProdutoPrecoRef.id_produto == AplicacaoDefensivoRef.id_insumo,
                 )
                 .outerjoin(
                     totais,
@@ -283,11 +316,18 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 despesa_descricao,
                 despesa_tipo,
                 despesa_data,
+                aplicacao_insumo,
+                aplicacao_data,
                 valor_pago,
                 saldo,
             ) = row
 
             session.expunge(conta)
+
+            if despesa_descricao is None and conta.id_aplicacao is not None:
+                despesa_descricao = aplicacao_insumo or f"Aplicacao #{conta.id_aplicacao}"
+                despesa_tipo = "FITOSANIDADE"
+                despesa_data = aplicacao_data
 
             return (
                 conta,
@@ -337,6 +377,18 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 session.expunge(registro)
             return registro
 
+    def get_by_aplicacao(self, id_aplicacao: int) -> ContaPagarModel | None:
+        """Busca a conta a pagar vinculada a uma aplicação de defensivo."""
+        with get_session() as session:
+            registro = session.scalar(
+                select(ContaPagarModel).where(
+                    ContaPagarModel.id_aplicacao == id_aplicacao
+                )
+            )
+            if registro is not None:
+                session.expunge(registro)
+            return registro
+
     def exists_by_compra(self, id_compra: int) -> bool:
         """Verifica se já existe conta a pagar vinculada a uma compra."""
         with get_session() as session:
@@ -373,6 +425,18 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 is not None
             )
 
+    def exists_by_aplicacao(self, id_aplicacao: int) -> bool:
+        """Verifica se já existe conta a pagar vinculada a uma aplicação."""
+        with get_session() as session:
+            return (
+                session.scalar(
+                    select(ContaPagarModel.id_conta_pagar)
+                    .where(ContaPagarModel.id_aplicacao == id_aplicacao)
+                    .limit(1)
+                )
+                is not None
+            )
+
     @staticmethod
     def _origem(conta: ContaPagarModel) -> str | None:
         if conta.id_compra is not None:
@@ -381,6 +445,8 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
             return "manutencao"
         if conta.id_despesa_logistica is not None:
             return "despesa_logistica"
+        if conta.id_aplicacao is not None:
+            return "aplicacao_defensivo"
         return None
 
 
@@ -951,6 +1017,44 @@ class FinanceiroLookupRepository:
             return [
                 (id_despesa, f"{descricao} — R$ {valor}", valor)
                 for id_despesa, descricao, valor in rows
+            ]
+
+    def list_aplicacoes_sem_conta_pagar(
+        self,
+    ) -> list[tuple[int, str, Decimal, date | None]]:
+        """Aplicações de defensivo sem conta a pagar, com custo estimado."""
+        with get_session() as session:
+            custo = func.coalesce(ProdutoPrecoRef.preco, 0) * func.coalesce(
+                AplicacaoDefensivoRef.volume_aplicado, 0
+            )
+            rows = session.execute(
+                select(
+                    AplicacaoDefensivoRef.id_aplicacao,
+                    ProdutoPrecoRef.nome,
+                    custo.label("valor"),
+                    AplicacaoDefensivoRef.dt_aplicacao,
+                )
+                .select_from(AplicacaoDefensivoRef)
+                .outerjoin(
+                    ProdutoPrecoRef,
+                    ProdutoPrecoRef.id_produto == AplicacaoDefensivoRef.id_insumo,
+                )
+                .outerjoin(
+                    ContaPagarModel,
+                    ContaPagarModel.id_aplicacao == AplicacaoDefensivoRef.id_aplicacao,
+                )
+                .where(ContaPagarModel.id_conta_pagar.is_(None))
+                .where(custo > 0)
+                .order_by(AplicacaoDefensivoRef.id_aplicacao.desc())
+            ).all()
+            return [
+                (
+                    id_aplicacao,
+                    f"Aplicacao #{id_aplicacao} — {nome or 'insumo'} — R$ {valor}",
+                    Decimal(str(valor)),
+                    dt_aplicacao,
+                )
+                for id_aplicacao, nome, valor, dt_aplicacao in rows
             ]
 
     def list_vendas_sem_conta_receber(self) -> list[tuple[int, str, Decimal, date | None]]:

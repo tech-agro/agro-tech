@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.financeiro.enum import StatusContaPagarEnum, StatusContaReceberEnum
 from app.financeiro.errors import FinanceiroError
 from app.financeiro.lookups import (
+    AplicacaoOptionSchema,
     CompraOptionSchema,
     ContaPagarOptionSchema,
     ContaReceberOptionSchema,
@@ -62,6 +63,10 @@ class FinanceiroController:
             "/lookups/despesas-logisticas",
             response_model=list[DespesaLogisticaOptionSchema],
         )(self.list_despesa_logistica_options)
+        self.router.get(
+            "/lookups/aplicacoes",
+            response_model=list[AplicacaoOptionSchema],
+        )(self.list_aplicacao_options)
         self.router.get(
             "/lookups/vendas", response_model=list[VendaOptionSchema]
         )(self.list_venda_options)
@@ -187,6 +192,9 @@ class FinanceiroController:
 
     def list_despesa_logistica_options(self) -> list[DespesaLogisticaOptionSchema]:
         return self.service.list_despesa_logistica_options()
+
+    def list_aplicacao_options(self) -> list[AplicacaoOptionSchema]:
+        return self.service.list_aplicacao_options()
 
     def list_venda_options(self) -> list[VendaOptionSchema]:
         return self.service.list_venda_options()

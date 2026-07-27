@@ -27,8 +27,8 @@ class ContaPagarModel(Base):
     """Representa uma conta a pagar do sistema.
 
     Uma conta a pagar pode ser originada por uma compra,
-    uma manutenção ou uma despesa de operação logística.
-    Corresponde à tabela `conta_pagar`.
+    uma manutenção, uma despesa logística ou uma aplicação
+    de defensivo. Corresponde à tabela `conta_pagar`.
     """
 
     __tablename__ = "conta_pagar"
@@ -40,7 +40,8 @@ class ContaPagarModel(Base):
             (
                 (CASE WHEN id_compra IS NOT NULL THEN 1 ELSE 0 END) +
                 (CASE WHEN id_manutencao IS NOT NULL THEN 1 ELSE 0 END) +
-                (CASE WHEN id_despesa_logistica IS NOT NULL THEN 1 ELSE 0 END)
+                (CASE WHEN id_despesa_logistica IS NOT NULL THEN 1 ELSE 0 END) +
+                (CASE WHEN id_aplicacao IS NOT NULL THEN 1 ELSE 0 END)
             ) = 1
             """,
             name="chk_conta_pagar_origem",
@@ -62,6 +63,11 @@ class ContaPagarModel(Base):
     id_despesa_logistica: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("despesa_operacao_logistica.id_despesa"),
+    )
+
+    id_aplicacao: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("aplicacao_defensivo.id_aplicacao"),
     )
 
     valor: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)

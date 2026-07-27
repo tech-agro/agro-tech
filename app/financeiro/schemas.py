@@ -21,6 +21,7 @@ class ContaPagarCreateSchema(BaseModel):
     id_compra: int | None = None
     id_manutencao: int | None = None
     id_despesa_logistica: int | None = None
+    id_aplicacao: int | None = None
     valor: Decimal = Field(ge=0)
     vencimento: date | None = None
 
@@ -30,6 +31,7 @@ class ContaPagarCreateSchema(BaseModel):
             self.id_compra,
             self.id_manutencao,
             self.id_despesa_logistica,
+            self.id_aplicacao,
         ]
 
         if sum(origem is not None for origem in origens) != 1:
@@ -52,6 +54,7 @@ class ContaPagarReadSchema(BaseModel):
     id_compra: int | None
     id_manutencao: int | None
     id_despesa_logistica: int | None
+    id_aplicacao: int | None = None
     valor: Decimal
     vencimento: date | None
     status: StatusContaPagarEnum

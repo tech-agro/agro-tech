@@ -12,6 +12,7 @@ from app.financeiro.lookups import (
     FormaPagamentoOptionSchema,
     ManutencaoOptionSchema,
     VendaOptionSchema,
+    AplicacaoOptionSchema,
 )
 
 
@@ -26,6 +27,10 @@ def manutencao_label(option: ManutencaoOptionSchema) -> str:
 def despesa_logistica_label(
     option: DespesaLogisticaOptionSchema,
 ) -> str:
+    return option.label
+
+
+def aplicacao_label(option: AplicacaoOptionSchema) -> str:
     return option.label
 
 

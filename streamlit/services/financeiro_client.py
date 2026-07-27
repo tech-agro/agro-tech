@@ -8,6 +8,7 @@ import requests
 
 from app.core.config import settings
 from app.financeiro.lookups import (
+    AplicacaoOptionSchema,
     CompraOptionSchema,
     ContaPagarOptionSchema,
     ContaReceberOptionSchema,
@@ -130,6 +131,16 @@ class FinanceiroClient:
         return [
             DespesaLogisticaOptionSchema.model_validate(item)
             for item in response.json()
+        ]
+
+    def list_aplicacao_options(self) -> list[AplicacaoOptionSchema]:
+        response = requests.get(
+            self._url("/financeiro/lookups/aplicacoes"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return [
+            AplicacaoOptionSchema.model_validate(item) for item in response.json()
         ]
 
     def list_venda_options(self) -> list[VendaOptionSchema]:

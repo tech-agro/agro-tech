@@ -40,6 +40,7 @@ from app.financeiro.schemas import (
     RecebimentoUpdateSchema,
 )
 from app.financeiro.lookups import (
+    AplicacaoOptionSchema,
     CompraOptionSchema,
     ContaPagarOptionSchema,
     ContaReceberOptionSchema,
@@ -155,6 +156,43 @@ class FinanceiroService:
                 valor=valor,
                 vencimento=vencimento,
             )
+        )
+
+    def create_conta_pagar_from_aplicacao(
+        self,
+        id_aplicacao: int,
+        valor: Decimal,
+        vencimento: date | None = None,
+    ) -> ContaPagarReadSchema:
+        existente = self.conta_pagar_repo.get_by_aplicacao(id_aplicacao)
+
+        if existente is not None:
+            loaded = self._load_conta_pagar_read(existente.id_conta_pagar)
+            assert loaded is not None
+            return loaded
+
+        return self.create_conta_pagar(
+            ContaPagarCreateSchema(
+                id_aplicacao=id_aplicacao,
+                valor=valor,
+                vencimento=vencimento,
+            )
+        )
+
+    def register_phytosanitary_cost(
+        self,
+        id_aplicacao: int,
+        valor: Decimal,
+        data_movimento: date | None = None,
+    ) -> ContaPagarReadSchema | None:
+        """Hook da Fitossanidade: cria conta a pagar da aplicação de defensivo."""
+        valor_dec = Decimal(str(valor))
+        if valor_dec <= 0:
+            return None
+        return self.create_conta_pagar_from_aplicacao(
+            id_aplicacao=id_aplicacao,
+            valor=valor_dec,
+            vencimento=data_movimento,
         )
 
     def create_conta_receber_from_venda(
@@ -487,6 +525,7 @@ class FinanceiroService:
             data.get("id_compra"),
             data.get("id_manutencao"),
             data.get("id_despesa_logistica"),
+            data.get("id_aplicacao"),
         ]
 
         if sum(valor is not None for valor in origem) > 1:
@@ -516,6 +555,12 @@ class FinanceiroService:
             ):
                 raise FinanceiroError(
                     "Já existe uma conta a pagar vinculada a esta despesa."
+                )
+
+        if data.get("id_aplicacao") is not None:
+            if self.conta_pagar_repo.exists_by_aplicacao(data["id_aplicacao"]):
+                raise FinanceiroError(
+                    "Já existe uma conta a pagar vinculada a esta aplicação."
                 )
 
         try:
@@ -1313,6 +1358,17 @@ class FinanceiroService:
         return [
             DespesaLogisticaOptionSchema(id_despesa=id_despesa, label=label, valor=valor)
             for id_despesa, label, valor in self.lookup_repo.list_despesas_sem_conta_pagar()
+        ]
+
+    def list_aplicacao_options(self) -> list[AplicacaoOptionSchema]:
+        return [
+            AplicacaoOptionSchema(
+                id_aplicacao=id_aplicacao,
+                label=label,
+                valor=valor,
+                dt_aplicacao=dt_aplicacao,
+            )
+            for id_aplicacao, label, valor, dt_aplicacao in self.lookup_repo.list_aplicacoes_sem_conta_pagar()
         ]
 
     def list_venda_options(self) -> list[VendaOptionSchema]:

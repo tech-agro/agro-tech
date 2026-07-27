@@ -38,6 +38,15 @@ class DespesaLogisticaOptionSchema(BaseModel):
     valor: Decimal
 
 
+class AplicacaoOptionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_aplicacao: int
+    label: str
+    valor: Decimal
+    dt_aplicacao: date | None = None
+
+
 class VendaOptionSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

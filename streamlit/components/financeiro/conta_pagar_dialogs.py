@@ -15,6 +15,7 @@ from components.financeiro.dialog_state import (
     get_dialog,
 )
 from components.financeiro.formatters import (
+    aplicacao_label,
     compra_label,
     despesa_logistica_label,
     manutencao_label,
@@ -57,6 +58,7 @@ def _create_dialog(scope: str) -> None:
         compras = client.list_compra_options()
         manutencoes = client.list_manutencao_options()
         despesas = client.list_despesa_logistica_options()
+        aplicacoes = client.list_aplicacao_options()
 
     except FinanceiroApiError as exc:
         st.error(exc.user_message)
@@ -73,12 +75,14 @@ def _create_dialog(scope: str) -> None:
             "Compra",
             "Manutenção",
             "Despesa logística",
+            "Aplicação fitossanitária",
         ),
     )
 
     id_compra = None
     id_manutencao = None
     id_despesa = None
+    id_aplicacao = None
     valor = Decimal("0")
 
     if origem == "Compra":
@@ -107,7 +111,7 @@ def _create_dialog(scope: str) -> None:
         id_manutencao = manutencao.id_manutencao
         valor = manutencao.custo or Decimal("0")
 
-    else:
+    elif origem == "Despesa logística":
         if not despesas:
             st.info("Nenhuma despesa logística disponível.")
             return
@@ -119,6 +123,19 @@ def _create_dialog(scope: str) -> None:
         )
         id_despesa = despesa.id_despesa
         valor = despesa.valor
+
+    else:
+        if not aplicacoes:
+            st.info("Nenhuma aplicação fitossanitária disponível.")
+            return
+
+        aplicacao = st.selectbox(
+            "Aplicação",
+            aplicacoes,
+            format_func=aplicacao_label,
+        )
+        id_aplicacao = aplicacao.id_aplicacao
+        valor = aplicacao.valor
 
     st.info(f"Valor: R$ {format_money(float(valor))}")
 
@@ -152,6 +169,7 @@ def _create_dialog(scope: str) -> None:
         id_compra=id_compra,
         id_manutencao=id_manutencao,
         id_despesa_logistica=id_despesa,
+        id_aplicacao=id_aplicacao,
         valor=valor,
         vencimento=vencimento,
     )
