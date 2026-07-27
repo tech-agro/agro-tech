@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import IntegrityError
@@ -41,6 +42,7 @@ from app.core.database import get_session
 
 if TYPE_CHECKING:
     from app.estoque.service import EstoqueService
+    from app.financeiro.service import FinanceiroService
 
 _EDITABLE_STATUSES = frozenset({OrderStatus.ABERTO})
 _PURCHASE_ALLOWED_STATUSES = frozenset({OrderStatus.APROVADO})
@@ -56,12 +58,14 @@ class PurchaseService:
         purchase_repo: PurchaseRepository | None = None,
         lookup_repo: PurchaseLookupRepository | None = None,
         inventory_service: EstoqueService | None = None,
+        financeiro_service: FinanceiroService | None = None,
     ) -> None:
         self.order_repo = order_repo or OrderRepository()
         self.item_repo = item_repo or OrderItemRepository()
         self.purchase_repo = purchase_repo or PurchaseRepository()
         self.lookup_repo = lookup_repo or PurchaseLookupRepository()
         self._inventory_service = inventory_service
+        self._financeiro_service = financeiro_service 
 
     def _inventory(self) -> EstoqueService:
         if self._inventory_service is None:
@@ -86,6 +90,20 @@ class PurchaseService:
     def _request_stock_entry(self, purchase_id: int) -> None:
         """Stock entry belongs to the inventory domain (when implemented)."""
         self._inventory().register_entry_from_purchase(purchase_id)
+
+    def _financeiro(self) -> FinanceiroService:
+        if self._financeiro_service is None:
+            from app.financeiro.service import FinanceiroService
+            self._financeiro_service = FinanceiroService()
+        return self._financeiro_service
+
+    def _request_conta_pagar(self, purchase_id: int, valor: Decimal, data_compra: date) -> None:
+        """Accounts payable hook: registering a purchase creates a conta_pagar automatically."""
+        self._financeiro().create_conta_pagar_from_compra(
+            id_compra=purchase_id,
+            valor=valor,
+            vencimento=None,  # ajustar quando houver prazo de pagamento do fornecedor
+        )
 
     @staticmethod
     def _to_order_read(order: OrderModel, fornecedor_nome: str | None) -> OrderReadSchema:
@@ -239,6 +257,7 @@ class PurchaseService:
                 "Could not register purchase. Check that id_centro_custo exists."
             ) from exc
         self._request_stock_entry(record.id_compra)
+        self._request_conta_pagar(record.id_compra, Decimal(str(total)), order.data_pedido or date.today())
 
     def delete_order(self, order_id: int) -> bool:
         if self.order_repo.get_by_id(order_id) is None:
@@ -323,9 +342,10 @@ class PurchaseService:
             raise PurchaseError(
                 "Could not register purchase. Check that id_centro_custo exists."
             ) from exc
-        # Accounts payable / finance: integrate later. Purchase already records the acquisition.
-        # Stock entry: inventory hook (no-op until implemented).
+        # Accounts payable / finance: finance
+        # Stock entry: inventory hook (no-op).
         self._request_stock_entry(record.id_compra)
+        self._request_conta_pagar(record.id_compra, Decimal(str(payload.valor_total)), payload.data_compra or date.today())
         return PurchaseReadSchema.model_validate(record)
 
     def list_purchases(self) -> list[PurchaseReadSchema]:

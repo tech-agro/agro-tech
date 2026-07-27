@@ -228,6 +228,14 @@ class FluxoCaixaModel(Base):
             """,
             name="chk_fluxo_caixa_origem",
         ),
+        CheckConstraint(
+            "id_pagamento IS NULL OR id_conta_pagar IS NOT NULL",
+            name="chk_fluxo_caixa_pagamento_consistente",
+        ),
+        CheckConstraint(
+            "id_recebimento IS NULL OR id_conta_receber IS NOT NULL",
+            name="chk_fluxo_caixa_recebimento_consistente",
+        ),
     )
 
     id_fluxo: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -235,6 +243,18 @@ class FluxoCaixaModel(Base):
     id_conta_pagar: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("conta_pagar.id_conta_pagar"))
 
     id_conta_receber: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("conta_receber.id_conta_receber"))
+
+    id_pagamento: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("pagamento.id_pagamento"),
+        unique=True,
+    )
+
+    id_recebimento: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("recebimento.id_recebimento"),
+        unique=True,
+    )
 
     valor: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 

@@ -42,7 +42,12 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
     model = ContaPagarModel
 
     def list_com_detalhes(
-        self, limit: int = 50, offset: int = 0
+        self,
+        status: StatusContaPagarEnum | None = None,
+        vencendo_em: int | None = None,
+        vencidas: bool = False,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[
         tuple[
             ContaPagarModel,
@@ -58,7 +63,12 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
             Decimal,
         ]
     ]:
-        """Lista contas a pagar com informações da origem e valores pagos.
+        """Lista contas a pagar com informações da origem, pagamentos e saldo.
+
+        Filtros opcionais:
+        - status: filtra pelo status da conta.
+        - vencendo_em: lista contas abertas com vencimento nos próximos N dias.
+        - vencidas: lista contas abertas cujo vencimento já passou.
 
         Retorna:
         (
@@ -75,6 +85,7 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
             saldo,
         )
         """
+
         with get_session() as session:
             totais = (
                 select(
@@ -85,7 +96,7 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 .subquery()
             )
 
-            rows = session.execute(
+            query = (
                 select(
                     ContaPagarModel,
                     PurchaseModel.valor_total,
@@ -95,10 +106,16 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                     DespesaOperacaoLogisticaRef.descricao,
                     DespesaOperacaoLogisticaRef.tipo,
                     DespesaOperacaoLogisticaRef.data_despesa,
-                    func.coalesce(totais.c.valor_pago, Decimal("0")).label("valor_pago"),
+                    func.coalesce(
+                        totais.c.valor_pago,
+                        Decimal("0"),
+                    ).label("valor_pago"),
                     (
                         ContaPagarModel.valor
-                        - func.coalesce(totais.c.valor_pago, Decimal("0"))
+                        - func.coalesce(
+                            totais.c.valor_pago,
+                            Decimal("0"),
+                        )
                     ).label("saldo"),
                 )
                 .outerjoin(
@@ -116,14 +133,50 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 )
                 .outerjoin(
                     totais,
-                    totais.c.id_conta_pagar == ContaPagarModel.id_conta_pagar,
+                    totais.c.id_conta_pagar
+                    == ContaPagarModel.id_conta_pagar,
                 )
-                .order_by(ContaPagarModel.id_conta_pagar)
+            )
+
+            if status is not None:
+                query = query.where(
+                    ContaPagarModel.status == status
+                )
+
+            hoje = date.today()
+
+            if vencendo_em is not None:
+                limite = hoje + timedelta(days=vencendo_em)
+
+                query = query.where(
+                    ContaPagarModel.vencimento.isnot(None),
+                    ContaPagarModel.vencimento >= hoje,
+                    ContaPagarModel.vencimento <= limite,
+                    ContaPagarModel.status.in_(
+                        _STATUS_CONTA_PAGAR_ABERTOS
+                    ),
+                )
+
+            if vencidas:
+                query = query.where(
+                    ContaPagarModel.vencimento.isnot(None),
+                    ContaPagarModel.vencimento < hoje,
+                    ContaPagarModel.status.in_(
+                        _STATUS_CONTA_PAGAR_ABERTOS
+                    ),
+                )
+
+            rows = session.execute(
+                query
+                .order_by(
+                    ContaPagarModel.id_conta_pagar
+                )
                 .limit(limit)
                 .offset(offset)
             ).all()
 
             result = []
+
             for (
                 conta,
                 compra_valor,
@@ -137,6 +190,7 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 saldo,
             ) in rows:
                 session.expunge(conta)
+
                 result.append(
                     (
                         conta,
@@ -248,54 +302,40 @@ class ContaPagarRepository(BaseRepository[ContaPagarModel]):
                 valor_pago,
                 saldo,
             )
-    
-    def list_by_status(
-        self, status: StatusContaPagarEnum, limit: int = 50, offset: int = 0
-    ) -> list[ContaPagarModel]:
-        """Lista contas a pagar filtradas por status (paginado)."""
-        with get_session() as session:
-            registros = session.scalars(
-                select(ContaPagarModel)
-                .where(ContaPagarModel.status == status)
-                .order_by(ContaPagarModel.vencimento)
-                .limit(limit)
-                .offset(offset)
-            ).all()
-            for registro in registros:
-                session.expunge(registro)
-            return list(registros)
 
-    def list_vencendo_em(self, dias: int) -> list[ContaPagarModel]:
-        """Lista contas a pagar ainda em aberto com vencimento nos próximos N dias."""
-        hoje = date.today()
-        limite = hoje + timedelta(days=dias)
+    def get_by_compra(self, id_compra: int) -> ContaPagarModel | None:
+        """Busca a conta a pagar vinculada a uma compra, se existir."""
         with get_session() as session:
-            registros = session.scalars(
-                select(ContaPagarModel).where(
-                    ContaPagarModel.vencimento.isnot(None),
-                    ContaPagarModel.vencimento >= hoje,
-                    ContaPagarModel.vencimento <= limite,
-                    ContaPagarModel.status.in_(_STATUS_CONTA_PAGAR_ABERTOS),
-                )
-            ).all()
-            for registro in registros:
+            registro = session.scalar(
+                select(ContaPagarModel).where(ContaPagarModel.id_compra == id_compra)
+            )
+            if registro is not None:
                 session.expunge(registro)
-            return list(registros)
+            return registro
 
-    def list_vencidas(self) -> list[ContaPagarModel]:
-        """Lista contas a pagar em aberto cujo vencimento já passou."""
-        hoje = date.today()
+    def get_by_manutencao(self, id_manutencao: int) -> ContaPagarModel | None:
+        """Busca a conta a pagar vinculada a uma manutenção, se existir."""
         with get_session() as session:
-            registros = session.scalars(
+            registro = session.scalar(
                 select(ContaPagarModel).where(
-                    ContaPagarModel.vencimento.isnot(None),
-                    ContaPagarModel.vencimento < hoje,
-                    ContaPagarModel.status.in_(_STATUS_CONTA_PAGAR_ABERTOS),
+                    ContaPagarModel.id_manutencao == id_manutencao
                 )
-            ).all()
-            for registro in registros:
+            )
+            if registro is not None:
                 session.expunge(registro)
-            return list(registros)
+            return registro
+
+    def get_by_despesa_logistica(self, id_despesa: int) -> ContaPagarModel | None:
+        """Busca a conta a pagar vinculada a uma despesa logística, se existir."""
+        with get_session() as session:
+            registro = session.scalar(
+                select(ContaPagarModel).where(
+                    ContaPagarModel.id_despesa_logistica == id_despesa
+                )
+            )
+            if registro is not None:
+                session.expunge(registro)
+            return registro
 
     def exists_by_compra(self, id_compra: int) -> bool:
         """Verifica se já existe conta a pagar vinculada a uma compra."""
@@ -430,7 +470,12 @@ class ContaReceberRepository(BaseRepository[ContaReceberModel]):
     model = ContaReceberModel
 
     def list_com_detalhes(
-        self, limit: int = 50, offset: int = 0
+        self,
+        status: StatusContaReceberEnum | None = None,
+        vencendo_em: int | None = None,
+        vencidas: bool = False,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[
         tuple[
             ContaReceberModel,
@@ -440,45 +485,112 @@ class ContaReceberRepository(BaseRepository[ContaReceberModel]):
             Decimal,
         ]
     ]:
-        """Lista contas a receber com dados da venda, valor recebido e saldo."""
+        """Lista contas a receber com dados da venda, recebimentos e saldo.
+
+        Filtros opcionais:
+        - status: filtra pelo status da conta.
+        - vencendo_em: lista contas abertas com vencimento nos próximos N dias.
+        - vencidas: lista contas abertas cujo vencimento já passou.
+
+        Retorna:
+        (
+            conta,
+            valor_venda,
+            data_venda,
+            valor_recebido,
+            saldo,
+        )
+        """
+
         with get_session() as session:
             totais = (
                 select(
                     RecebimentoModel.id_conta_receber,
-                    func.sum(RecebimentoModel.valor_recebido).label("valor_recebido"),
+                    func.sum(
+                        RecebimentoModel.valor_recebido
+                    ).label("valor_recebido"),
                 )
                 .group_by(RecebimentoModel.id_conta_receber)
                 .subquery()
             )
 
-            rows = session.execute(
+            query = (
                 select(
                     ContaReceberModel,
                     VendaRef.valor_total,
                     VendaRef.data_venda,
-                    func.coalesce(totais.c.valor_recebido, Decimal("0")).label("valor_recebido"),
+                    func.coalesce(
+                        totais.c.valor_recebido,
+                        Decimal("0"),
+                    ).label("valor_recebido"),
                     (
                         ContaReceberModel.valor
-                        - func.coalesce(totais.c.valor_recebido, Decimal("0"))
+                        - func.coalesce(
+                            totais.c.valor_recebido,
+                            Decimal("0"),
+                        )
                     ).label("saldo"),
                 )
                 .outerjoin(
                     VendaRef,
-                    VendaRef.id_venda == ContaReceberModel.id_venda,
+                    VendaRef.id_venda
+                    == ContaReceberModel.id_venda,
                 )
                 .outerjoin(
                     totais,
-                    totais.c.id_conta_receber == ContaReceberModel.id_conta_receber,
+                    totais.c.id_conta_receber
+                    == ContaReceberModel.id_conta_receber,
                 )
-                .order_by(ContaReceberModel.id_conta_receber)
+            )
+
+            if status is not None:
+                query = query.where(
+                    ContaReceberModel.status == status
+                )
+
+            hoje = date.today()
+
+            if vencendo_em is not None:
+                limite = hoje + timedelta(days=vencendo_em)
+
+                query = query.where(
+                    ContaReceberModel.vencimento.isnot(None),
+                    ContaReceberModel.vencimento >= hoje,
+                    ContaReceberModel.vencimento <= limite,
+                    ContaReceberModel.status.in_(
+                        _STATUS_CONTA_RECEBER_ABERTOS
+                    ),
+                )
+
+            if vencidas:
+                query = query.where(
+                    ContaReceberModel.vencimento.isnot(None),
+                    ContaReceberModel.vencimento < hoje,
+                    ContaReceberModel.status.in_(
+                        _STATUS_CONTA_RECEBER_ABERTOS
+                    ),
+                )
+
+            rows = session.execute(
+                query
+                .order_by(
+                    ContaReceberModel.id_conta_receber
+                )
                 .limit(limit)
                 .offset(offset)
             ).all()
 
             result = []
 
-            for conta, valor_venda, data_venda, valor_recebido, saldo in rows:
+            for (
+                conta,
+                valor_venda,
+                data_venda,
+                valor_recebido,
+                saldo,
+            ) in rows:
                 session.expunge(conta)
+
                 result.append(
                     (
                         conta,
@@ -547,54 +659,16 @@ class ContaReceberRepository(BaseRepository[ContaReceberModel]):
                 valor_recebido,
                 saldo,
             )
-    
-    def list_by_status(
-        self, status: StatusContaReceberEnum, limit: int = 50, offset: int = 0
-    ) -> list[ContaReceberModel]:
-        """Lista contas a receber filtradas por status (paginado)."""
-        with get_session() as session:
-            registros = session.scalars(
-                select(ContaReceberModel)
-                .where(ContaReceberModel.status == status)
-                .order_by(ContaReceberModel.vencimento)
-                .limit(limit)
-                .offset(offset)
-            ).all()
-            for registro in registros:
-                session.expunge(registro)
-            return list(registros)
 
-    def list_vencendo_em(self, dias: int) -> list[ContaReceberModel]:
-        """Lista contas a receber ainda em aberto com vencimento nos próximos N dias."""
-        hoje = date.today()
-        limite = hoje + timedelta(days=dias)
+    def get_by_venda(self, id_venda: int) -> ContaReceberModel | None:
+        """Busca a conta a receber vinculada a uma venda, se existir."""
         with get_session() as session:
-            registros = session.scalars(
-                select(ContaReceberModel).where(
-                    ContaReceberModel.vencimento.isnot(None),
-                    ContaReceberModel.vencimento >= hoje,
-                    ContaReceberModel.vencimento <= limite,
-                    ContaReceberModel.status.in_(_STATUS_CONTA_RECEBER_ABERTOS),
-                )
-            ).all()
-            for registro in registros:
+            registro = session.scalar(
+                select(ContaReceberModel).where(ContaReceberModel.id_venda == id_venda)
+            )
+            if registro is not None:
                 session.expunge(registro)
-            return list(registros)
-
-    def list_vencidas(self) -> list[ContaReceberModel]:
-        """Lista contas a receber em aberto cujo vencimento já passou."""
-        hoje = date.today()
-        with get_session() as session:
-            registros = session.scalars(
-                select(ContaReceberModel).where(
-                    ContaReceberModel.vencimento.isnot(None),
-                    ContaReceberModel.vencimento < hoje,
-                    ContaReceberModel.status.in_(_STATUS_CONTA_RECEBER_ABERTOS),
-                )
-            ).all()
-            for registro in registros:
-                session.expunge(registro)
-            return list(registros)
+            return registro
 
     def exists_by_venda(self, id_venda: int) -> bool:
         """Verifica se já existe conta a receber vinculada a uma venda."""
@@ -761,6 +835,30 @@ class FluxoCaixaRepository(BaseRepository[FluxoCaixaModel]):
             for registro in registros:
                 session.expunge(registro)
             return list(registros)
+
+    def get_by_pagamento(self, id_pagamento: int) -> FluxoCaixaModel | None:
+        """Busca o lançamento de caixa gerado por um pagamento específico."""
+        with get_session() as session:
+            registro = session.scalar(
+                select(FluxoCaixaModel).where(
+                    FluxoCaixaModel.id_pagamento == id_pagamento
+                )
+            )
+            if registro is not None:
+                session.expunge(registro)
+            return registro
+
+    def get_by_recebimento(self, id_recebimento: int) -> FluxoCaixaModel | None:
+        """Busca o lançamento de caixa gerado por um recebimento específico."""
+        with get_session() as session:
+            registro = session.scalar(
+                select(FluxoCaixaModel).where(
+                    FluxoCaixaModel.id_recebimento == id_recebimento
+                )
+            )
+            if registro is not None:
+                session.expunge(registro)
+            return registro
 
     def total_por_tipo(
         self, data_inicio: date, data_fim: date

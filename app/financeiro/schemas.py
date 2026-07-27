@@ -185,6 +185,8 @@ class FluxoCaixaReadSchema(BaseModel):
     id_fluxo: int
     id_conta_pagar: int | None
     id_conta_receber: int | None
+    id_pagamento: int | None = None
+    id_recebimento: int | None = None
 
     valor: Decimal
     tipo: str | None
