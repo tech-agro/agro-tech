@@ -14,3 +14,11 @@ class UnitSymbol(str, enum.Enum):
     SC = "SC"
     HA = "HA"
     T = "T"
+
+
+class StatusCliente(str, enum.Enum):
+    """Mirrors status_cliente_enum in the database."""
+
+    ATIVO = "ATIVO"
+    INATIVO = "INATIVO"
+    BLOQUEADO = "BLOQUEADO"

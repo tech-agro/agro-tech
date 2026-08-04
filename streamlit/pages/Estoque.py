@@ -36,6 +36,9 @@ from components.shared.screens import (
     toast_error,
 )
 from services.estoque_client import EstoqueApiError, EstoqueClient
+from services.identity_client import require_login
+
+require_login()
 
 setup_page("Estoque", "Controle de lotes, armazenagem, saldo e movimentações.")
 

@@ -39,6 +39,9 @@ from components.shared.screens import (
     toast_ok,
 )
 from services.compras_client import PurchasesClient
+from services.identity_client import require_login
+
+require_login()
 
 setup_page("Compras", "Gestao de pedidos de compra.")
 

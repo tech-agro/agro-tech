@@ -271,6 +271,23 @@ class ManutencaoService:
         )
         if updated is None:
             raise ManutencaoError("Nao foi possivel concluir a manutencao.")
+
+        if custo_efetivo is not None and custo_efetivo > 0:
+            try:
+                from decimal import Decimal
+
+                from app.financeiro.service import FinanceiroService
+
+                FinanceiroService().create_conta_pagar_from_manutencao(
+                    id_manutencao=id_manutencao,
+                    valor=Decimal(str(custo_efetivo)),
+                    vencimento=dt_fim_efetiva,
+                )
+            except Exception:
+                # Conclusao da manutencao nao deve falhar se o Financeiro rejeitar;
+                # a conta pode ser criada manualmente depois.
+                pass
+
         return updated
 
     def cancelar_manutencao(self, id_manutencao: int) -> ManutencaoReadSchema:

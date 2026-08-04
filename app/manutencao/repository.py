@@ -953,12 +953,6 @@ class ManutencaoRepository:
             values (:id_manutencao, :observacao)
             """
         )
-        insert_fluxo = text(
-            """
-            insert into fluxo_caixa (valor, tipo, data_movimento)
-            values (:valor, :tipo, :data_movimento)
-            """
-        )
         update_plano = text(
             """
             update plano_manutencao
@@ -1008,16 +1002,6 @@ class ManutencaoRepository:
                         "observacao": observacao_historico,
                     },
                 )
-
-                if custo is not None and custo > 0:
-                    conn.execute(
-                        insert_fluxo,
-                        {
-                            "valor": custo,
-                            "tipo": f"CUSTO_MANUTENCAO:{id_manutencao}",
-                            "data_movimento": dt_fim,
-                        },
-                    )
 
                 if id_plano is not None and proxima_execucao is not None:
                     conn.execute(

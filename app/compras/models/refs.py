@@ -15,6 +15,7 @@ from app.core.base import Base
 
 class PessoaRef(Base):
     __tablename__ = "pessoa"
+    __table_args__ = {"extend_existing": True}
 
     id_pessoa: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -22,6 +23,7 @@ class PessoaRef(Base):
 
 class FornecedorRef(Base):
     __tablename__ = "fornecedor"
+    __table_args__ = {"extend_existing": True}
 
     id_fornecedor: Mapped[int] = mapped_column(primary_key=True)
     id_pessoa: Mapped[int] = mapped_column(ForeignKey("pessoa.id_pessoa"), nullable=False)
@@ -30,6 +32,7 @@ class FornecedorRef(Base):
 
 class UnidadeMedidaRef(Base):
     __tablename__ = "unidade_medida"
+    __table_args__ = {"extend_existing": True}
 
     id_unidade: Mapped[int] = mapped_column(primary_key=True)
     sigla: Mapped[UnitSymbol] = mapped_column(
@@ -47,6 +50,7 @@ class UnidadeMedidaRef(Base):
 
 class ProdutoRef(Base):
     __tablename__ = "produto"
+    __table_args__ = {"extend_existing": True}
 
     id_produto: Mapped[int] = mapped_column(primary_key=True)
     id_unidade: Mapped[int] = mapped_column(
@@ -57,6 +61,7 @@ class ProdutoRef(Base):
 
 class CentroCustoRef(Base):
     __tablename__ = "centro_custo"
+    __table_args__ = {"extend_existing": True}
 
     id_centro_custo: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(120), nullable=False)

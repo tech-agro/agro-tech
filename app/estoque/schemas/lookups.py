@@ -38,6 +38,7 @@ class LoteOptionSchema(BaseModel):
 
     id_lote: int
     codigo_lote: str
+    id_produto: int | None = None
     produto_nome: str | None = None
 
 
@@ -52,4 +53,5 @@ class ItemPedidoOptionSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id_item_pedido: int
+    id_produto: int | None = None
     descricao: str

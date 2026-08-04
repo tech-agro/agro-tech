@@ -13,7 +13,7 @@ class RecebimentoCompraCreateSchema(BaseModel):
     id_estoque: int
     quantidade_recebida: Decimal = Field(gt=0)
     data_recebimento: datetime | None = None
-    codigo_lote: str | None = Field(default=None, min_length=1, max_length=120)
+    id_lote: int | None = None
     validade_lote: date | None = None
 
 

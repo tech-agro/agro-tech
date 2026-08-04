@@ -14,6 +14,7 @@ from components.estoque.formatters import (
     colheita_label,
     estoque_label,
     item_pedido_label,
+    lote_label,
     produto_label,
 )
 from services.estoque_client import EstoqueApiError, EstoqueClient
@@ -43,6 +44,7 @@ def _recebimento_dialog(scope: str) -> None:
     try:
         itens_pedido = client.list_item_pedido_options()
         estoques = client.list_estoque_options()
+        lotes = client.list_lote_options()
 
     except EstoqueApiError as exc:
         st.error(exc.user_message)
@@ -95,11 +97,24 @@ def _recebimento_dialog(scope: str) -> None:
 
     data_recebimento = st.date_input("Data do recebimento", value=None)
 
+    lotes_produto = [
+        lote
+        for lote in lotes
+        if item_pedido.id_produto is None or lote.id_produto == item_pedido.id_produto
+    ]
+
     st.caption(
-        "Informe o código do lote se o produto vier identificado pelo fornecedor "
-        "(nota fiscal ou etiqueta). Se não houver, deixe em branco."
+        "O codigo do lote e gerado automaticamente. "
+        "Selecione um lote existente apenas para continuar o mesmo lote."
     )
-    codigo_lote = st.text_input("Código do lote (opcional)")
+    lote_escolhido = st.selectbox(
+        "Lote",
+        options=[None, *lotes_produto],
+        format_func=lambda lote: (
+            "Novo lote (automatico)" if lote is None else lote_label(lote)
+        ),
+    )
+
     validade_lote = st.date_input("Validade do lote (opcional)", value=None)
 
     col1, col2 = st.columns(2)
@@ -126,7 +141,7 @@ def _recebimento_dialog(scope: str) -> None:
             if data_recebimento
             else None
         ),
-        codigo_lote=codigo_lote.strip() or None,
+        id_lote=None if lote_escolhido is None else lote_escolhido.id_lote,
         validade_lote=validade_lote,
     )
 
@@ -215,7 +230,7 @@ def _colheita_dialog(scope: str) -> None:
         format="%.2f",
     )
 
-    codigo_lote = st.text_input("Código do lote")
+    st.caption("O codigo do lote sera gerado automaticamente.")
 
     col_val, col_qual = st.columns(2)
     with col_val:
@@ -240,16 +255,11 @@ def _colheita_dialog(scope: str) -> None:
     if not salvar:
         return
 
-    if not codigo_lote.strip():
-        st.error("Informe o código do lote.")
-        return
-
     payload = EntradaColheitaCreateSchema(
         id_colheita=colheita.id_colheita,
         id_produto=produto.id_produto,
         id_estoque=estoque.id_estoque,
         quantidade=Decimal(str(quantidade)),
-        codigo_lote=codigo_lote.strip(),
         validade_lote=validade_lote,
         qualidade_lote=qualidade_lote.strip() or None,
         data_entrada=(
