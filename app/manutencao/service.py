@@ -34,6 +34,11 @@ from app.manutencao.schemas.ordem_servico import (
     OrdemServicoUpdateSchema,
 )
 from app.manutencao.schemas.plano_manutencao import PlanoManutencaoReadSchema
+from app.manutencao.schemas.tipo_maquina import (
+    TipoMaquinaCreateSchema,
+    TipoMaquinaReadSchema,
+    TipoMaquinaUpdateSchema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -317,6 +322,51 @@ class ManutencaoService:
 
     def get_manutencao(self, id_manutencao: int) -> ManutencaoReadSchema:
         return self._obter_manutencao(id_manutencao)
+
+    # ------------------------------------------------------------------
+    # Tipo maquina
+    # ------------------------------------------------------------------
+
+    def create_tipo_maquina(
+        self,
+        payload: TipoMaquinaCreateSchema,
+    ) -> TipoMaquinaReadSchema:
+        tipo = self.repository.create_tipo_maquina(payload)
+        if tipo is None:
+            raise ManutencaoError("Nao foi possivel criar o tipo de maquina.")
+        return tipo
+
+    def list_tipos_maquina(self) -> list[TipoMaquinaReadSchema]:
+        return self.repository.list_tipos_maquina()
+
+    def get_tipo_maquina(self, id_tipo_maquina: int) -> TipoMaquinaReadSchema:
+        tipo = self.repository.get_tipo_maquina_by_id(id_tipo_maquina)
+        if tipo is None:
+            raise ManutencaoNotFoundError(
+                f"Tipo de maquina {id_tipo_maquina} nao encontrado."
+            )
+        return tipo
+
+    def update_tipo_maquina(
+        self,
+        id_tipo_maquina: int,
+        payload: TipoMaquinaUpdateSchema,
+    ) -> TipoMaquinaReadSchema:
+        self.get_tipo_maquina(id_tipo_maquina)
+        if payload.descricao is not None and not payload.descricao.strip():
+            raise ManutencaoValidationError("Descricao do tipo nao pode ser vazia.")
+        updated = self.repository.update_tipo_maquina(id_tipo_maquina, payload)
+        if updated is None:
+            raise ManutencaoError("Nao foi possivel atualizar o tipo de maquina.")
+        return updated
+
+    def delete_tipo_maquina(self, id_tipo_maquina: int) -> bool:
+        self.get_tipo_maquina(id_tipo_maquina)
+        if self.repository.count_maquinas_by_tipo(id_tipo_maquina) > 0:
+            raise ManutencaoConflictError(
+                "Tipo de maquina possui maquinas cadastradas e nao pode ser excluido."
+            )
+        return self.repository.delete_tipo_maquina(id_tipo_maquina)
 
     # ------------------------------------------------------------------
     # Maquina

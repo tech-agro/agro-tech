@@ -26,6 +26,11 @@ from app.manutencao.schemas.ordem_servico import (
     OrdemServicoReadSchema,
     OrdemServicoUpdateSchema,
 )
+from app.manutencao.schemas.tipo_maquina import (
+    TipoMaquinaCreateSchema,
+    TipoMaquinaReadSchema,
+    TipoMaquinaUpdateSchema,
+)
 from app.manutencao.service import (
     ManutencaoConflictError,
     ManutencaoError,
@@ -82,6 +87,32 @@ class ManutencaoController:
         self._register_routes()
 
     def _register_routes(self) -> None:
+        self.router.post(
+            "/tipos-maquina",
+            response_model=TipoMaquinaReadSchema,
+            name="create_tipo_maquina",
+        )(self.create_tipo_maquina)
+        self.router.get(
+            "/tipos-maquina",
+            response_model=list[TipoMaquinaReadSchema],
+            name="list_tipos_maquina",
+        )(self.list_tipos_maquina)
+        self.router.get(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=TipoMaquinaReadSchema,
+            name="get_tipo_maquina",
+        )(self.get_tipo_maquina)
+        self.router.put(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=TipoMaquinaReadSchema,
+            name="update_tipo_maquina",
+        )(self.update_tipo_maquina)
+        self.router.delete(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=MessageResponse,
+            name="delete_tipo_maquina",
+        )(self.delete_tipo_maquina)
+
         self.router.post(
             "/maquinas",
             response_model=MaquinaReadSchema,
@@ -187,6 +218,40 @@ class ManutencaoController:
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
         except ManutencaoError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    def create_tipo_maquina(
+        self,
+        payload: TipoMaquinaCreateSchema,
+    ) -> TipoMaquinaReadSchema:
+        return self._handle_errors(lambda: self.service.create_tipo_maquina(payload))
+
+    def list_tipos_maquina(self) -> list[TipoMaquinaReadSchema]:
+        return self._handle_errors(lambda: self.service.list_tipos_maquina())
+
+    def get_tipo_maquina(self, id_tipo_maquina: int) -> TipoMaquinaReadSchema:
+        return self._handle_errors(
+            lambda: self.service.get_tipo_maquina(id_tipo_maquina)
+        )
+
+    def update_tipo_maquina(
+        self,
+        id_tipo_maquina: int,
+        payload: TipoMaquinaUpdateSchema,
+    ) -> TipoMaquinaReadSchema:
+        return self._handle_errors(
+            lambda: self.service.update_tipo_maquina(id_tipo_maquina, payload)
+        )
+
+    def delete_tipo_maquina(self, id_tipo_maquina: int) -> MessageResponse:
+        deleted = self._handle_errors(
+            lambda: self.service.delete_tipo_maquina(id_tipo_maquina)
+        )
+        if not deleted:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Nao foi possivel excluir o tipo de maquina.",
+            )
+        return MessageResponse(message="Tipo de maquina excluido.")
 
     def create_maquina(self, payload: MaquinaCreateRequest) -> MaquinaReadSchema:
         return self._handle_errors(

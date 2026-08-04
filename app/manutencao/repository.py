@@ -30,6 +30,11 @@ from app.manutencao.schemas.ordem_servico import (
     OrdemServicoUpdateSchema,
 )
 from app.manutencao.schemas.plano_manutencao import PlanoManutencaoReadSchema
+from app.manutencao.schemas.tipo_maquina import (
+    TipoMaquinaCreateSchema,
+    TipoMaquinaReadSchema,
+    TipoMaquinaUpdateSchema,
+)
 
 
 @dataclass(slots=True)
@@ -55,6 +60,144 @@ class ManutencaoRepository:
         self.logger = logger or logging.getLogger(__name__)
 
     # ------------------------------------------------------------------
+    # Tipo maquina
+    # ------------------------------------------------------------------
+
+    def create_tipo_maquina(
+        self,
+        payload: TipoMaquinaCreateSchema,
+    ) -> TipoMaquinaReadSchema | None:
+        sql = text(
+            """
+            insert into tipo_maquina (descricao)
+            values (:descricao)
+            returning id_tipo_maquina, descricao
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {"descricao": payload.descricao.strip()},
+                ).one()
+            return self._row_to_tipo_maquina(row)
+        except Exception as exc:
+            self.logger.error("Erro ao criar tipo de maquina: %s", exc)
+            return None
+
+    def list_tipos_maquina(self) -> list[TipoMaquinaReadSchema]:
+        sql = text(
+            """
+            select id_tipo_maquina, descricao
+            from tipo_maquina
+            order by descricao
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                rows = conn.execute(sql).fetchall()
+            return [self._row_to_tipo_maquina(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("Erro ao listar tipos de maquina: %s", exc)
+            return []
+
+    def get_tipo_maquina_by_id(self, id_tipo_maquina: int) -> TipoMaquinaReadSchema | None:
+        sql = text(
+            """
+            select id_tipo_maquina, descricao
+            from tipo_maquina
+            where id_tipo_maquina = :id_tipo_maquina
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {"id_tipo_maquina": id_tipo_maquina},
+                ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_tipo_maquina(row)
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao buscar tipo de maquina %s: %s",
+                id_tipo_maquina,
+                exc,
+            )
+            return None
+
+    def update_tipo_maquina(
+        self,
+        id_tipo_maquina: int,
+        payload: TipoMaquinaUpdateSchema,
+    ) -> TipoMaquinaReadSchema | None:
+        sql = text(
+            """
+            update tipo_maquina
+            set descricao = coalesce(:descricao, descricao)
+            where id_tipo_maquina = :id_tipo_maquina
+            returning id_tipo_maquina, descricao
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {
+                        "id_tipo_maquina": id_tipo_maquina,
+                        "descricao": payload.descricao.strip()
+                        if payload.descricao is not None
+                        else None,
+                    },
+                ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_tipo_maquina(row)
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao atualizar tipo de maquina %s: %s",
+                id_tipo_maquina,
+                exc,
+            )
+            return None
+
+    def delete_tipo_maquina(self, id_tipo_maquina: int) -> bool:
+        sql = text("delete from tipo_maquina where id_tipo_maquina = :id_tipo_maquina")
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                result = conn.execute(sql, {"id_tipo_maquina": id_tipo_maquina})
+            return result.rowcount > 0
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao excluir tipo de maquina %s: %s",
+                id_tipo_maquina,
+                exc,
+            )
+            return False
+
+    def count_maquinas_by_tipo(self, id_tipo_maquina: int) -> int:
+        sql = text(
+            """
+            select count(*)
+            from maquina
+            where id_tipo_maquina = :id_tipo_maquina
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                return conn.execute(
+                    sql,
+                    {"id_tipo_maquina": id_tipo_maquina},
+                ).scalar_one()
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao contar maquinas do tipo %s: %s",
+                id_tipo_maquina,
+                exc,
+            )
+            return 0
+
+    # ------------------------------------------------------------------
     # Maquina
     # ------------------------------------------------------------------
 
@@ -66,9 +209,16 @@ class ManutencaoRepository:
     ) -> MaquinaReadSchema | None:
         sql = text(
             """
-            insert into maquina (id_tipo_maquina, id_fazenda, nome, status)
-            values (:id_tipo_maquina, :id_fazenda, :nome, :status)
-            returning id_maquina, id_tipo_maquina, nome, status
+            with inserted as (
+                insert into maquina (id_tipo_maquina, id_fazenda, nome, status)
+                values (:id_tipo_maquina, :id_fazenda, :nome, :status)
+                returning id_maquina, id_tipo_maquina, id_fazenda, nome, status
+            )
+            select i.id_maquina, i.id_tipo_maquina, i.id_fazenda, i.nome, i.status,
+                   f.nome as nome_fazenda, tm.descricao as descricao_tipo
+            from inserted i
+            left join fazenda f on f.id_fazenda = i.id_fazenda
+            left join tipo_maquina tm on tm.id_tipo_maquina = i.id_tipo_maquina
             """
         )
         try:
@@ -90,9 +240,12 @@ class ManutencaoRepository:
     def get_maquina_by_id(self, id_maquina: int) -> MaquinaReadSchema | None:
         sql = text(
             """
-            select id_maquina, id_tipo_maquina, nome, status
-            from maquina
-            where id_maquina = :id_maquina
+            select m.id_maquina, m.id_tipo_maquina, m.id_fazenda, m.nome, m.status,
+                   f.nome as nome_fazenda, tm.descricao as descricao_tipo
+            from maquina m
+            left join fazenda f on f.id_fazenda = m.id_fazenda
+            left join tipo_maquina tm on tm.id_tipo_maquina = m.id_tipo_maquina
+            where m.id_maquina = :id_maquina
             """
         )
         try:
@@ -114,24 +267,27 @@ class ManutencaoRepository:
         params: dict[str, Any] = {}
 
         if filters.id_tipo_maquina is not None:
-            clauses.append("id_tipo_maquina = :id_tipo_maquina")
+            clauses.append("m.id_tipo_maquina = :id_tipo_maquina")
             params["id_tipo_maquina"] = filters.id_tipo_maquina
         if filters.id_fazenda is not None:
-            clauses.append("id_fazenda = :id_fazenda")
+            clauses.append("m.id_fazenda = :id_fazenda")
             params["id_fazenda"] = filters.id_fazenda
         if filters.status is not None:
-            clauses.append("status = :status")
+            clauses.append("m.status = :status")
             params["status"] = filters.status
         if filters.nome is not None:
-            clauses.append("nome ilike :nome")
+            clauses.append("m.nome ilike :nome")
             params["nome"] = f"%{filters.nome}%"
 
         sql = text(
             f"""
-            select id_maquina, id_tipo_maquina, nome, status
-            from maquina
+            select m.id_maquina, m.id_tipo_maquina, m.id_fazenda, m.nome, m.status,
+                   f.nome as nome_fazenda, tm.descricao as descricao_tipo
+            from maquina m
+            left join fazenda f on f.id_fazenda = m.id_fazenda
+            left join tipo_maquina tm on tm.id_tipo_maquina = m.id_tipo_maquina
             where {' and '.join(clauses)}
-            order by nome
+            order by m.nome
             """
         )
         try:
@@ -149,12 +305,19 @@ class ManutencaoRepository:
     ) -> MaquinaReadSchema | None:
         sql = text(
             """
-            update maquina
-            set id_tipo_maquina = coalesce(:id_tipo_maquina, id_tipo_maquina),
-                nome = coalesce(:nome, nome),
-                status = coalesce(:status, status)
-            where id_maquina = :id_maquina
-            returning id_maquina, id_tipo_maquina, nome, status
+            with updated as (
+                update maquina
+                set id_tipo_maquina = coalesce(:id_tipo_maquina, id_tipo_maquina),
+                    nome = coalesce(:nome, nome),
+                    status = coalesce(:status, status)
+                where id_maquina = :id_maquina
+                returning id_maquina, id_tipo_maquina, id_fazenda, nome, status
+            )
+            select u.id_maquina, u.id_tipo_maquina, u.id_fazenda, u.nome, u.status,
+                   f.nome as nome_fazenda, tm.descricao as descricao_tipo
+            from updated u
+            left join fazenda f on f.id_fazenda = u.id_fazenda
+            left join tipo_maquina tm on tm.id_tipo_maquina = u.id_tipo_maquina
             """
         )
         try:
@@ -899,8 +1062,18 @@ class ManutencaoRepository:
         return MaquinaReadSchema(
             id_maquina=row.id_maquina,
             id_tipo_maquina=row.id_tipo_maquina,
+            id_fazenda=row.id_fazenda,
             nome=row.nome,
             status=row.status,
+            nome_fazenda=getattr(row, "nome_fazenda", None),
+            descricao_tipo=getattr(row, "descricao_tipo", None),
+        )
+
+    @staticmethod
+    def _row_to_tipo_maquina(row) -> TipoMaquinaReadSchema:
+        return TipoMaquinaReadSchema(
+            id_tipo_maquina=row.id_tipo_maquina,
+            descricao=row.descricao,
         )
 
     @staticmethod

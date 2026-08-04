@@ -33,6 +33,43 @@ def _extract_error(resposta: requests.Response) -> str:
     return str(detail)
 
 
+def list_tipos_maquina() -> list[dict[str, Any]]:
+    resposta = _request("GET", "/manutencao/tipos-maquina")
+    resposta.raise_for_status()
+    return resposta.json()
+
+
+def create_tipo_maquina(payload: dict[str, Any]) -> dict[str, Any]:
+    resposta = _request("POST", "/manutencao/tipos-maquina", json=payload)
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def get_tipo_maquina(id_tipo_maquina: int) -> dict[str, Any]:
+    resposta = _request("GET", f"/manutencao/tipos-maquina/{id_tipo_maquina}")
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def update_tipo_maquina(id_tipo_maquina: int, payload: dict[str, Any]) -> dict[str, Any]:
+    resposta = _request(
+        "PUT",
+        f"/manutencao/tipos-maquina/{id_tipo_maquina}",
+        json=payload,
+    )
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def delete_tipo_maquina(id_tipo_maquina: int) -> None:
+    resposta = _request("DELETE", f"/manutencao/tipos-maquina/{id_tipo_maquina}")
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+
+
 def list_maquinas(
     *,
     id_tipo_maquina: int | None = None,
