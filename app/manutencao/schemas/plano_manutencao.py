@@ -24,3 +24,11 @@ class PlanoManutencaoReadSchema(BaseModel):
     id_maquina: int
     periodicidade: str | None
     proxima_execucao: date | None
+
+
+class PlanoManutencaoDetalheSchema(BaseModel):
+    id_plano: int
+    id_maquina: int
+    periodicidade: str | None
+    proxima_execucao: date | None
+    nome_maquina: str

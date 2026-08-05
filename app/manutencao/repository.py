@@ -20,16 +20,27 @@ from app.manutencao.schemas.manutencao import (
     ManutencaoUpdateSchema,
 )
 from app.manutencao.schemas.manutencao_corretiva import (
+    ManutencaoCorretivaDetalheSchema,
     ManutencaoCorretivaReadSchema,
     ManutencaoCorretivaUpdateSchema,
 )
-from app.manutencao.schemas.manutencao_preventiva import ManutencaoPreventivaReadSchema
+from app.manutencao.schemas.manutencao_preventiva import (
+    ManutencaoPreventivaDetalheSchema,
+    ManutencaoPreventivaReadSchema,
+    ManutencaoPreventivaUpdateSchema,
+)
 from app.manutencao.schemas.ordem_servico import (
     OrdemServicoCreateSchema,
+    OrdemServicoDetalheSchema,
     OrdemServicoReadSchema,
     OrdemServicoUpdateSchema,
 )
-from app.manutencao.schemas.plano_manutencao import PlanoManutencaoReadSchema
+from app.manutencao.schemas.plano_manutencao import (
+    PlanoManutencaoCreateSchema,
+    PlanoManutencaoDetalheSchema,
+    PlanoManutencaoReadSchema,
+    PlanoManutencaoUpdateSchema,
+)
 from app.manutencao.schemas.tipo_maquina import (
     TipoMaquinaCreateSchema,
     TipoMaquinaReadSchema,
@@ -49,6 +60,24 @@ class MaquinaFilters:
 class OrdemServicoFilters:
     id_manutencao: int | None = None
     id_maquina: int | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
+class ManutencaoCorretivaFilters:
+    id_maquina: int | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
+class PlanoManutencaoFilters:
+    id_maquina: int | None = None
+
+
+@dataclass(slots=True)
+class ManutencaoPreventivaFilters:
+    id_maquina: int | None = None
+    id_plano: int | None = None
     status: str | None = None
 
 
@@ -409,14 +438,12 @@ class ManutencaoRepository:
     def list_ordens_servico(
         self,
         filters: OrdemServicoFilters | None = None,
-    ) -> list[OrdemServicoReadSchema]:
+    ) -> list[OrdemServicoDetalheSchema]:
         filters = filters or OrdemServicoFilters()
         clauses = ["1 = 1"]
         params: dict[str, Any] = {}
-        join = ""
 
         if filters.id_maquina is not None:
-            join = "join manutencao m on m.id_manutencao = os.id_manutencao"
             clauses.append("m.id_maquina = :id_maquina")
             params["id_maquina"] = filters.id_maquina
         if filters.id_manutencao is not None:
@@ -428,9 +455,13 @@ class ManutencaoRepository:
 
         sql = text(
             f"""
-            select os.id_ordem_servico, os.id_manutencao, os.descricao, os.status
+            select os.id_ordem_servico, os.id_manutencao, os.descricao, os.status,
+                   m.id_maquina, m.status as status_manutencao, m.tipo as tipo_manutencao,
+                   mq.nome as nome_maquina, mc.defeito_relatado
             from ordem_servico os
-            {join}
+            join manutencao m on m.id_manutencao = os.id_manutencao
+            join maquina mq on mq.id_maquina = m.id_maquina
+            left join manutencao_corretiva mc on mc.id_manutencao = m.id_manutencao
             where {' and '.join(clauses)}
             order by os.id_ordem_servico desc
             """
@@ -438,7 +469,7 @@ class ManutencaoRepository:
         try:
             with self.pg_connector.pool.begin() as conn:
                 rows = conn.execute(sql, params).fetchall()
-            return [self._row_to_ordem_servico(row) for row in rows]
+            return [self._row_to_ordem_servico_detalhe(row) for row in rows]
         except Exception as exc:
             self.logger.error("Erro ao listar ordens de servico: %s", exc)
             return []
@@ -522,6 +553,82 @@ class ManutencaoRepository:
             self.logger.error("Erro ao buscar manutencao %s: %s", id_manutencao, exc)
             return None
 
+    def list_manutencoes_corretivas(
+        self,
+        filters: ManutencaoCorretivaFilters | None = None,
+    ) -> list[ManutencaoCorretivaDetalheSchema]:
+        filters = filters or ManutencaoCorretivaFilters()
+        clauses = ["1 = 1"]
+        params: dict[str, Any] = {}
+
+        if filters.id_maquina is not None:
+            clauses.append("m.id_maquina = :id_maquina")
+            params["id_maquina"] = filters.id_maquina
+        if filters.status is not None:
+            clauses.append("m.status = :status")
+            params["status"] = filters.status
+
+        sql = text(
+            f"""
+            select m.id_manutencao, m.id_maquina, m.id_funcionario, m.id_prestador,
+                   m.tipo, m.custo, m.status, m.dt_inicio, m.dt_fim,
+                   mc.defeito_relatado, mc.causa_raiz, mc.solucao_aplicada,
+                   mq.nome as nome_maquina
+            from manutencao m
+            join manutencao_corretiva mc on mc.id_manutencao = m.id_manutencao
+            join maquina mq on mq.id_maquina = m.id_maquina
+            where {' and '.join(clauses)}
+            order by m.id_manutencao desc
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_manutencao_corretiva_detalhe(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("Erro ao listar manutencoes corretivas: %s", exc)
+            return []
+
+    def list_manutencoes_preventivas(
+        self,
+        filters: ManutencaoPreventivaFilters | None = None,
+    ) -> list[ManutencaoPreventivaDetalheSchema]:
+        filters = filters or ManutencaoPreventivaFilters()
+        clauses = ["1 = 1"]
+        params: dict[str, Any] = {}
+
+        if filters.id_maquina is not None:
+            clauses.append("m.id_maquina = :id_maquina")
+            params["id_maquina"] = filters.id_maquina
+        if filters.id_plano is not None:
+            clauses.append("mp.id_plano = :id_plano")
+            params["id_plano"] = filters.id_plano
+        if filters.status is not None:
+            clauses.append("m.status = :status")
+            params["status"] = filters.status
+
+        sql = text(
+            f"""
+            select m.id_manutencao, m.id_maquina, m.id_funcionario, m.id_prestador,
+                   m.tipo, m.custo, m.status, m.dt_inicio, m.dt_fim,
+                   mp.id_plano, mp.hodometro_execucao, mp.proxima_hodometro,
+                   mq.nome as nome_maquina, pm.periodicidade, pm.proxima_execucao as proxima_execucao_plano
+            from manutencao m
+            join manutencao_preventiva mp on mp.id_manutencao = m.id_manutencao
+            join plano_manutencao pm on pm.id_plano = mp.id_plano
+            join maquina mq on mq.id_maquina = m.id_maquina
+            where {' and '.join(clauses)}
+            order by m.id_manutencao desc
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_manutencao_preventiva_detalhe(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("Erro ao listar manutencoes preventivas: %s", exc)
+            return []
+
     def update_manutencao(
         self,
         id_manutencao: int,
@@ -598,6 +705,148 @@ class ManutencaoRepository:
             self.logger.error(
                 "Erro ao contar manutencoes abertas da maquina %s: %s",
                 id_maquina,
+                exc,
+            )
+            return 0
+
+    # ------------------------------------------------------------------
+    # Plano manutencao
+    # ------------------------------------------------------------------
+
+    def create_plano(
+        self,
+        payload: PlanoManutencaoCreateSchema,
+    ) -> PlanoManutencaoDetalheSchema | None:
+        sql = text(
+            """
+            insert into plano_manutencao (id_maquina, periodicidade, proxima_execucao)
+            values (:id_maquina, :periodicidade, :proxima_execucao)
+            returning id_plano, id_maquina, periodicidade, proxima_execucao
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {
+                        "id_maquina": payload.id_maquina,
+                        "periodicidade": payload.periodicidade,
+                        "proxima_execucao": payload.proxima_execucao,
+                    },
+                ).one()
+                maquina = conn.execute(
+                    text("select nome from maquina where id_maquina = :id_maquina"),
+                    {"id_maquina": payload.id_maquina},
+                ).one()
+            return PlanoManutencaoDetalheSchema(
+                id_plano=row.id_plano,
+                id_maquina=row.id_maquina,
+                periodicidade=row.periodicidade,
+                proxima_execucao=row.proxima_execucao,
+                nome_maquina=maquina.nome,
+            )
+        except Exception as exc:
+            self.logger.error("Erro ao criar plano de manutencao: %s", exc)
+            return None
+
+    def list_planos(
+        self,
+        filters: PlanoManutencaoFilters | None = None,
+    ) -> list[PlanoManutencaoDetalheSchema]:
+        filters = filters or PlanoManutencaoFilters()
+        clauses = ["1 = 1"]
+        params: dict[str, Any] = {}
+
+        if filters.id_maquina is not None:
+            clauses.append("pm.id_maquina = :id_maquina")
+            params["id_maquina"] = filters.id_maquina
+
+        sql = text(
+            f"""
+            select pm.id_plano, pm.id_maquina, pm.periodicidade, pm.proxima_execucao,
+                   mq.nome as nome_maquina
+            from plano_manutencao pm
+            join maquina mq on mq.id_maquina = pm.id_maquina
+            where {' and '.join(clauses)}
+            order by pm.id_plano desc
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_plano_detalhe(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("Erro ao listar planos de manutencao: %s", exc)
+            return []
+
+    def update_plano(
+        self,
+        id_plano: int,
+        payload: PlanoManutencaoUpdateSchema,
+    ) -> PlanoManutencaoDetalheSchema | None:
+        sql = text(
+            """
+            update plano_manutencao
+            set id_maquina = coalesce(:id_maquina, id_maquina),
+                periodicidade = coalesce(:periodicidade, periodicidade),
+                proxima_execucao = coalesce(:proxima_execucao, proxima_execucao)
+            where id_plano = :id_plano
+            returning id_plano, id_maquina, periodicidade, proxima_execucao
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {
+                        "id_plano": id_plano,
+                        "id_maquina": payload.id_maquina,
+                        "periodicidade": payload.periodicidade,
+                        "proxima_execucao": payload.proxima_execucao,
+                    },
+                ).fetchone()
+                if row is None:
+                    return None
+                maquina = conn.execute(
+                    text("select nome from maquina where id_maquina = :id_maquina"),
+                    {"id_maquina": row.id_maquina},
+                ).one()
+            return PlanoManutencaoDetalheSchema(
+                id_plano=row.id_plano,
+                id_maquina=row.id_maquina,
+                periodicidade=row.periodicidade,
+                proxima_execucao=row.proxima_execucao,
+                nome_maquina=maquina.nome,
+            )
+        except Exception as exc:
+            self.logger.error("Erro ao atualizar plano %s: %s", id_plano, exc)
+            return None
+
+    def delete_plano(self, id_plano: int) -> bool:
+        sql = text("delete from plano_manutencao where id_plano = :id_plano")
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                result = conn.execute(sql, {"id_plano": id_plano})
+            return result.rowcount > 0
+        except Exception as exc:
+            self.logger.error("Erro ao excluir plano %s: %s", id_plano, exc)
+            return False
+
+    def count_preventivas_by_plano(self, id_plano: int) -> int:
+        sql = text(
+            """
+            select count(*)
+            from manutencao_preventiva
+            where id_plano = :id_plano
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                return conn.execute(sql, {"id_plano": id_plano}).scalar_one()
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao contar preventivas do plano %s: %s",
+                id_plano,
                 exc,
             )
             return 0
@@ -813,6 +1062,43 @@ class ManutencaoRepository:
         except Exception as exc:
             self.logger.error(
                 "Erro ao buscar manutencao preventiva %s: %s",
+                id_manutencao,
+                exc,
+            )
+            return None
+
+    def update_manutencao_preventiva(
+        self,
+        id_manutencao: int,
+        payload: ManutencaoPreventivaUpdateSchema,
+    ) -> ManutencaoPreventivaReadSchema | None:
+        sql = text(
+            """
+            update manutencao_preventiva
+            set id_plano = coalesce(:id_plano, id_plano),
+                hodometro_execucao = coalesce(:hodometro_execucao, hodometro_execucao),
+                proxima_hodometro = coalesce(:proxima_hodometro, proxima_hodometro)
+            where id_manutencao = :id_manutencao
+            returning id_manutencao, id_plano, hodometro_execucao, proxima_hodometro
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {
+                        "id_manutencao": id_manutencao,
+                        "id_plano": payload.id_plano,
+                        "hodometro_execucao": payload.hodometro_execucao,
+                        "proxima_hodometro": payload.proxima_hodometro,
+                    },
+                ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_manutencao_preventiva(row)
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao atualizar manutencao preventiva %s: %s",
                 id_manutencao,
                 exc,
             )
@@ -1070,6 +1356,20 @@ class ManutencaoRepository:
         )
 
     @staticmethod
+    def _row_to_ordem_servico_detalhe(row) -> OrdemServicoDetalheSchema:
+        return OrdemServicoDetalheSchema(
+            id_ordem_servico=row.id_ordem_servico,
+            id_manutencao=row.id_manutencao,
+            descricao=row.descricao,
+            status=row.status,
+            id_maquina=row.id_maquina,
+            nome_maquina=row.nome_maquina,
+            status_manutencao=row.status_manutencao,
+            tipo_manutencao=row.tipo_manutencao,
+            defeito_relatado=row.defeito_relatado,
+        )
+
+    @staticmethod
     def _row_to_manutencao(row) -> ManutencaoReadSchema:
         return ManutencaoReadSchema(
             id_manutencao=row.id_manutencao,
@@ -1107,6 +1407,72 @@ class ManutencaoRepository:
             defeito_relatado=row.defeito_relatado,
             causa_raiz=row.causa_raiz,
             solucao_aplicada=row.solucao_aplicada,
+        )
+
+    @staticmethod
+    def _row_to_manutencao_corretiva_detalhe(row) -> ManutencaoCorretivaDetalheSchema:
+        return ManutencaoCorretivaDetalheSchema(
+            manutencao=ManutencaoReadSchema(
+                id_manutencao=row.id_manutencao,
+                id_maquina=row.id_maquina,
+                id_funcionario=row.id_funcionario,
+                id_prestador=row.id_prestador,
+                tipo=row.tipo,
+                custo=float(row.custo) if row.custo is not None else None,
+                status=row.status,
+                dt_inicio=row.dt_inicio,
+                dt_fim=row.dt_fim,
+            ),
+            corretiva=ManutencaoCorretivaReadSchema(
+                id_manutencao=row.id_manutencao,
+                defeito_relatado=row.defeito_relatado,
+                causa_raiz=row.causa_raiz,
+                solucao_aplicada=row.solucao_aplicada,
+            ),
+            nome_maquina=row.nome_maquina,
+        )
+
+    @staticmethod
+    def _row_to_manutencao_preventiva_detalhe(row) -> ManutencaoPreventivaDetalheSchema:
+        return ManutencaoPreventivaDetalheSchema(
+            manutencao=ManutencaoReadSchema(
+                id_manutencao=row.id_manutencao,
+                id_maquina=row.id_maquina,
+                id_funcionario=row.id_funcionario,
+                id_prestador=row.id_prestador,
+                tipo=row.tipo,
+                custo=float(row.custo) if row.custo is not None else None,
+                status=row.status,
+                dt_inicio=row.dt_inicio,
+                dt_fim=row.dt_fim,
+            ),
+            preventiva=ManutencaoPreventivaReadSchema(
+                id_manutencao=row.id_manutencao,
+                id_plano=row.id_plano,
+                hodometro_execucao=(
+                    float(row.hodometro_execucao)
+                    if row.hodometro_execucao is not None
+                    else None
+                ),
+                proxima_hodometro=(
+                    float(row.proxima_hodometro)
+                    if row.proxima_hodometro is not None
+                    else None
+                ),
+            ),
+            nome_maquina=row.nome_maquina,
+            periodicidade=row.periodicidade,
+            proxima_execucao_plano=row.proxima_execucao_plano,
+        )
+
+    @staticmethod
+    def _row_to_plano_detalhe(row) -> PlanoManutencaoDetalheSchema:
+        return PlanoManutencaoDetalheSchema(
+            id_plano=row.id_plano,
+            id_maquina=row.id_maquina,
+            periodicidade=row.periodicidade,
+            proxima_execucao=row.proxima_execucao,
+            nome_maquina=row.nome_maquina,
         )
 
     @staticmethod

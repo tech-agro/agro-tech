@@ -9,9 +9,12 @@ from datetime import date, timedelta
 
 from app.core.database import pg_connector
 from app.manutencao.repository import (
+    ManutencaoCorretivaFilters,
+    ManutencaoPreventivaFilters,
     ManutencaoRepository,
     MaquinaFilters,
     OrdemServicoFilters,
+    PlanoManutencaoFilters,
 )
 from app.manutencao.schemas.maquina import (
     MaquinaCreateSchema,
@@ -24,16 +27,27 @@ from app.manutencao.schemas.manutencao import (
     ManutencaoUpdateSchema,
 )
 from app.manutencao.schemas.manutencao_corretiva import (
+    ManutencaoCorretivaDetalheSchema,
     ManutencaoCorretivaReadSchema,
     ManutencaoCorretivaUpdateSchema,
 )
-from app.manutencao.schemas.manutencao_preventiva import ManutencaoPreventivaReadSchema
+from app.manutencao.schemas.manutencao_preventiva import (
+    ManutencaoPreventivaDetalheSchema,
+    ManutencaoPreventivaReadSchema,
+    ManutencaoPreventivaUpdateSchema,
+)
 from app.manutencao.schemas.ordem_servico import (
     OrdemServicoCreateSchema,
+    OrdemServicoDetalheSchema,
     OrdemServicoReadSchema,
     OrdemServicoUpdateSchema,
 )
-from app.manutencao.schemas.plano_manutencao import PlanoManutencaoReadSchema
+from app.manutencao.schemas.plano_manutencao import (
+    PlanoManutencaoCreateSchema,
+    PlanoManutencaoDetalheSchema,
+    PlanoManutencaoReadSchema,
+    PlanoManutencaoUpdateSchema,
+)
 from app.manutencao.schemas.tipo_maquina import (
     TipoMaquinaCreateSchema,
     TipoMaquinaReadSchema,
@@ -174,6 +188,75 @@ class ManutencaoService:
             manutencao=manutencao,
             corretiva=corretiva,
         )
+
+    def list_manutencoes_corretivas(
+        self,
+        *,
+        id_maquina: int | None = None,
+        status: str | None = None,
+    ) -> list[ManutencaoCorretivaDetalheSchema]:
+        """Lista manutencoes corretivas com filtros opcionais."""
+        return self.repository.list_manutencoes_corretivas(
+            ManutencaoCorretivaFilters(
+                id_maquina=id_maquina,
+                status=status,
+            )
+        )
+
+    def list_manutencoes_preventivas(
+        self,
+        *,
+        id_maquina: int | None = None,
+        id_plano: int | None = None,
+        status: str | None = None,
+    ) -> list[ManutencaoPreventivaDetalheSchema]:
+        """Lista manutencoes preventivas com filtros opcionais."""
+        return self.repository.list_manutencoes_preventivas(
+            ManutencaoPreventivaFilters(
+                id_maquina=id_maquina,
+                id_plano=id_plano,
+                status=status,
+            )
+        )
+
+    def atualizar_manutencao_preventiva(
+        self,
+        id_manutencao: int,
+        payload: ManutencaoPreventivaUpdateSchema,
+    ) -> ManutencaoPreventivaReadSchema:
+        """Atualiza detalhes de manutencao preventiva durante a execucao."""
+        manutencao = self._obter_manutencao(id_manutencao)
+        if manutencao.tipo != TIPO_PREVENTIVA:
+            raise ManutencaoValidationError(
+                "Somente manutencoes preventivas possuem estes detalhes."
+            )
+        if manutencao.status in FINAL_MANUTENCAO_STATUSES:
+            raise ManutencaoConflictError(
+                "Manutencao encerrada nao pode ser alterada."
+            )
+
+        if payload.dt_inicio is not None:
+            self._validar_periodo(payload.dt_inicio, manutencao.dt_fim)
+            updated_manutencao = self.repository.update_manutencao(
+                id_manutencao,
+                ManutencaoUpdateSchema(dt_inicio=payload.dt_inicio),
+            )
+            if updated_manutencao is None:
+                raise ManutencaoError("Nao foi possivel atualizar a data de execucao.")
+
+        updated = self.repository.update_manutencao_preventiva(
+            id_manutencao,
+            ManutencaoPreventivaUpdateSchema(
+                id_plano=payload.id_plano,
+                hodometro_execucao=payload.hodometro_execucao,
+                proxima_hodometro=payload.proxima_hodometro,
+            ),
+        )
+        if updated is None:
+            raise ManutencaoNotFoundError(
+                f"Manutencao preventiva {id_manutencao} nao encontrada."
+            )
+        return updated
 
     def iniciar_manutencao(self, id_manutencao: int) -> ManutencaoReadSchema:
         """Transiciona manutencao de ABERTA para EM_EXECUCAO."""
@@ -330,7 +413,23 @@ class ManutencaoService:
                 "Manutencao encerrada nao pode ser alterada."
             )
 
-        updated = self.repository.update_manutencao_corretiva(id_manutencao, payload)
+        if payload.dt_inicio is not None:
+            self._validar_periodo(payload.dt_inicio, manutencao.dt_fim)
+            updated_manutencao = self.repository.update_manutencao(
+                id_manutencao,
+                ManutencaoUpdateSchema(dt_inicio=payload.dt_inicio),
+            )
+            if updated_manutencao is None:
+                raise ManutencaoError("Nao foi possivel atualizar a data do defeito.")
+
+        updated = self.repository.update_manutencao_corretiva(
+            id_manutencao,
+            ManutencaoCorretivaUpdateSchema(
+                defeito_relatado=payload.defeito_relatado,
+                causa_raiz=payload.causa_raiz,
+                solucao_aplicada=payload.solucao_aplicada,
+            ),
+        )
         if updated is None:
             raise ManutencaoNotFoundError(
                 f"Manutencao corretiva {id_manutencao} nao encontrada."
@@ -432,6 +531,59 @@ class ManutencaoService:
         return self.repository.delete_maquina(id_maquina)
 
     # ------------------------------------------------------------------
+    # Plano manutencao
+    # ------------------------------------------------------------------
+
+    def create_plano(self, payload: PlanoManutencaoCreateSchema) -> PlanoManutencaoDetalheSchema:
+        self._garantir_maquina_existe(payload.id_maquina)
+        self._validar_periodicidade(payload.periodicidade)
+        plano = self.repository.create_plano(payload)
+        if plano is None:
+            raise ManutencaoError("Nao foi possivel criar o plano de manutencao.")
+        return plano
+
+    def list_planos(
+        self,
+        *,
+        id_maquina: int | None = None,
+    ) -> list[PlanoManutencaoDetalheSchema]:
+        return self.repository.list_planos(
+            PlanoManutencaoFilters(id_maquina=id_maquina)
+        )
+
+    def get_plano(self, id_plano: int) -> PlanoManutencaoReadSchema:
+        plano = self.repository.get_plano_by_id(id_plano)
+        if plano is None:
+            raise ManutencaoNotFoundError(f"Plano {id_plano} nao encontrado.")
+        return plano
+
+    def update_plano(
+        self,
+        id_plano: int,
+        payload: PlanoManutencaoUpdateSchema,
+    ) -> PlanoManutencaoDetalheSchema:
+        atual = self.get_plano(id_plano)
+        if payload.id_maquina is not None:
+            self._garantir_maquina_existe(payload.id_maquina)
+        if payload.periodicidade is not None:
+            self._validar_periodicidade(payload.periodicidade)
+        elif atual.periodicidade:
+            self._validar_periodicidade(atual.periodicidade)
+
+        updated = self.repository.update_plano(id_plano, payload)
+        if updated is None:
+            raise ManutencaoError("Nao foi possivel atualizar o plano de manutencao.")
+        return updated
+
+    def delete_plano(self, id_plano: int) -> bool:
+        self.get_plano(id_plano)
+        if self.repository.count_preventivas_by_plano(id_plano) > 0:
+            raise ManutencaoConflictError(
+                "Plano possui manutencoes preventivas vinculadas e nao pode ser excluido."
+            )
+        return self.repository.delete_plano(id_plano)
+
+    # ------------------------------------------------------------------
     # Ordem de servico
     # ------------------------------------------------------------------
 
@@ -461,7 +613,7 @@ class ManutencaoService:
     def list_ordens_servico(
         self,
         filters: OrdemServicoFilters | None = None,
-    ) -> list[OrdemServicoReadSchema]:
+    ) -> list[OrdemServicoDetalheSchema]:
         return self.repository.list_ordens_servico(filters)
 
     def update_ordem_servico(
@@ -532,6 +684,15 @@ class ManutencaoService:
         if dt_inicio is not None and dt_fim is not None and dt_fim < dt_inicio:
             raise ManutencaoValidationError(
                 "Data fim nao pode ser anterior a data inicio."
+            )
+
+    @staticmethod
+    def _validar_periodicidade(periodicidade: str | None) -> None:
+        if periodicidade is None or not periodicidade.strip():
+            raise ManutencaoValidationError("Informe a periodicidade do plano.")
+        if ManutencaoService._parse_periodicidade(periodicidade) is None:
+            raise ManutencaoValidationError(
+                "Periodicidade invalida. Use formatos como '30 DIAS', '6 MESES' ou '500 HORAS'."
             )
 
     def _validar_conclusao_ordem_servico(self, ordem: OrdemServicoReadSchema) -> None:
