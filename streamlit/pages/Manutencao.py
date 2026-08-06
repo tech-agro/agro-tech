@@ -1023,27 +1023,19 @@ def _render_manutencao_corretiva() -> None:
                 "Solucao aplicada",
                 value=detalhe.get("solucao_aplicada") or "",
             )
-            custo_atual = manutencao.get("custo")
-            novo_custo = st.number_input(
-                "Custo",
-                min_value=0.0,
-                step=0.01,
-                format="%.2f",
-                value=float(custo_atual) if custo_atual is not None else 0.0,
-            )
             salvar = st.form_submit_button("Salvar detalhes")
 
         if salvar:
             try:
-                payload = {
-                    "dt_inicio": nova_data_defeito.isoformat(),
-                    "defeito_relatado": novo_defeito.strip() or None,
-                    "causa_raiz": nova_causa.strip() or None,
-                    "solucao_aplicada": nova_solucao.strip() or None,
-                }
-                if novo_custo > 0:
-                    payload["custo"] = float(novo_custo)
-                api.update_manutencao_corretiva(manutencao_id, payload)
+                api.update_manutencao_corretiva(
+                    manutencao_id,
+                    {
+                        "dt_inicio": nova_data_defeito.isoformat(),
+                        "defeito_relatado": novo_defeito.strip() or None,
+                        "causa_raiz": nova_causa.strip() or None,
+                        "solucao_aplicada": nova_solucao.strip() or None,
+                    },
+                )
                 st.success("Detalhes atualizados.")
                 st.rerun()
             except Exception as exc:
@@ -1059,13 +1051,11 @@ def _render_manutencao_corretiva() -> None:
                     st.error(str(exc))
 
         if status in {"ABERTA", "EM_EXECUCAO"}:
-            custo_salvo = manutencao.get("custo")
             custo = st.number_input(
                 "Custo",
                 min_value=0.0,
                 step=0.01,
                 format="%.2f",
-                value=float(custo_salvo) if custo_salvo is not None else 0.0,
                 key=f"custo_corretiva_{manutencao_id}",
             )
             if st.button("Concluir manutencao", key=f"concluir_{manutencao_id}"):

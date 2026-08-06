@@ -6,8 +6,13 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.core.database import pg_connector
+
+if TYPE_CHECKING:
+    from app.financeiro.service import FinanceiroService
 from app.manutencao.repository import (
     ManutencaoCorretivaFilters,
     ManutencaoPreventivaFilters,
@@ -102,8 +107,33 @@ class ManutencaoCorretivaResult:
 class ManutencaoService:
     """Camada de orquestracao das regras de negocio."""
 
-    def __init__(self, repository: ManutencaoRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: ManutencaoRepository | None = None,
+        financeiro_service: FinanceiroService | None = None,
+    ) -> None:
         self.repository = repository or ManutencaoRepository(pg_connector, logger)
+        self._financeiro_service = financeiro_service
+
+    def _financeiro(self) -> FinanceiroService:
+        if self._financeiro_service is None:
+            from app.financeiro.service import FinanceiroService
+
+            self._financeiro_service = FinanceiroService()
+        return self._financeiro_service
+
+    def _request_conta_pagar_from_manutencao(
+        self,
+        id_manutencao: int,
+        valor: Decimal,
+        vencimento: date,
+    ) -> None:
+        """Conclusao de manutencao gera conta a pagar no financeiro."""
+        self._financeiro().create_conta_pagar_from_manutencao(
+            id_manutencao=id_manutencao,
+            valor=valor,
+            vencimento=vencimento,
+        )
 
     # ------------------------------------------------------------------
     # Manutencao preventiva / corretiva
@@ -362,20 +392,11 @@ class ManutencaoService:
             raise ManutencaoError("Nao foi possivel concluir a manutencao.")
 
         if custo_efetivo is not None and custo_efetivo > 0:
-            try:
-                from decimal import Decimal
-
-                from app.financeiro.service import FinanceiroService
-
-                FinanceiroService().create_conta_pagar_from_manutencao(
-                    id_manutencao=id_manutencao,
-                    valor=Decimal(str(custo_efetivo)),
-                    vencimento=dt_fim_efetiva,
-                )
-            except Exception:
-                # Conclusao da manutencao nao deve falhar se o Financeiro rejeitar;
-                # a conta pode ser criada manualmente depois.
-                pass
+            self._request_conta_pagar_from_manutencao(
+                id_manutencao=id_manutencao,
+                valor=Decimal(str(custo_efetivo)),
+                vencimento=dt_fim_efetiva,
+            )
 
         return updated
 

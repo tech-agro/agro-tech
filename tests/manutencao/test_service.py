@@ -125,7 +125,7 @@ def test_concluir_manutencao_corretiva_exige_solucao(
     assert manutencao_service.get_maquina(sample_maquina.id_maquina).status == "DISPONIVEL"
 
 
-def test_concluir_manutencao_registra_historico_e_fluxo(
+def test_concluir_manutencao_registra_historico_e_conta_pagar(
     manutencao_service,
     db_engine,
     sample_maquina,
@@ -152,23 +152,26 @@ def test_concluir_manutencao_registra_historico_e_fluxo(
             ),
             {"id_manutencao": id_manutencao},
         ).scalar_one()
-        fluxo = conn.execute(
+        conta = conn.execute(
             text(
                 """
-                SELECT COUNT(*) FROM fluxo_caixa
-                WHERE tipo = :tipo
+                SELECT valor, status::text
+                FROM conta_pagar
+                WHERE id_manutencao = :id_manutencao
                 """
             ),
-            {"tipo": f"CUSTO_MANUTENCAO:{id_manutencao}"},
-        ).scalar_one()
+            {"id_manutencao": id_manutencao},
+        ).one()
 
     assert historico == 1
-    assert fluxo == 1
+    assert float(conta.valor) == 480.0
+    assert conta.status == "ABERTA"
 
 
 def test_concluir_manutencao_preventiva_recalcula_plano(
     manutencao_service,
     manutencao_repository,
+    db_engine,
     sample_maquina,
     sample_plano,
 ):
@@ -189,6 +192,20 @@ def test_concluir_manutencao_preventiva_recalcula_plano(
     plano = manutencao_repository.get_plano_by_id(sample_plano)
     assert plano is not None
     assert plano.proxima_execucao == dt_fim + timedelta(days=90)
+
+    with db_engine.connect() as conn:
+        conta = conn.execute(
+            text(
+                """
+                SELECT valor, vencimento
+                FROM conta_pagar
+                WHERE id_manutencao = :id_manutencao
+                """
+            ),
+            {"id_manutencao": id_manutencao},
+        ).one()
+    assert float(conta.valor) == 120.0
+    assert conta.vencimento == dt_fim
 
 
 def test_cancelar_manutencao_restaura_disponibilidade(

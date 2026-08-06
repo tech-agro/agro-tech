@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.integration
 
 MANUTENCAO_TABLES = (
+    "pagamento",
+    "conta_pagar",
     "historico_manutencao",
     "fluxo_caixa",
     "ordem_servico",
