@@ -198,6 +198,22 @@ def _plano_usa_hodometro(plano: dict) -> bool:
     return "HORA" in (plano.get("periodicidade") or "").upper()
 
 
+def _parse_data_plano(valor) -> date | None:
+    if valor is None:
+        return None
+    if isinstance(valor, str):
+        return date.fromisoformat(valor)
+    return valor
+
+
+def _data_sugerida_preventiva(plano: dict | None) -> date:
+    if plano is not None and not _plano_usa_hodometro(plano):
+        proxima = _parse_data_plano(plano.get("proxima_execucao"))
+        if proxima is not None:
+            return proxima
+    return date.today()
+
+
 def _rotulo_plano(plano: dict) -> str:
     nome = plano.get("nome_maquina") or "maquina"
     periodicidade = plano.get("periodicidade") or "—"
@@ -569,10 +585,16 @@ def _render_planos_manutencao() -> None:
                 key="novo_plano_maquina",
             )
             periodicidade = st.selectbox("Periodicidade", PERIODICIDADE_OPCOES)
-            proxima_execucao = st.date_input(
-                "Proxima execucao",
-                value=date.today(),
-            )
+            if _plano_usa_hodometro({"periodicidade": periodicidade}):
+                st.caption(
+                    "Planos por horas usam hodometro. "
+                    "A proxima execucao por data nao se aplica."
+                )
+            else:
+                st.caption(
+                    "A proxima execucao sera calculada automaticamente "
+                    f"a partir de hoje + {periodicidade}."
+                )
             criar = st.form_submit_button("Cadastrar plano")
 
         if criar:
@@ -584,7 +606,6 @@ def _render_planos_manutencao() -> None:
                         {
                             "id_maquina": int(id_maquina),
                             "periodicidade": periodicidade,
-                            "proxima_execucao": proxima_execucao.isoformat(),
                         }
                     )
                     st.success("Plano cadastrado.")
@@ -602,6 +623,16 @@ def _render_planos_manutencao() -> None:
         selecionado = st.selectbox("Plano", list(opcoes.keys()), key="sel_plano")
         plano = opcoes[selecionado]
         plano_id = int(plano["id_plano"])
+        proxima_atual = _parse_data_plano(plano.get("proxima_execucao"))
+
+        if _plano_usa_hodometro(plano):
+            st.caption("Proxima execucao por data: nao se aplica (controle por hodometro).")
+        else:
+            st.caption(
+                "Proxima execucao: "
+                f"{proxima_atual.isoformat() if proxima_atual else '—'} "
+                "(atualizada automaticamente ao concluir uma preventiva)."
+            )
 
         with st.form(f"form_editar_plano_{plano_id}"):
             nova_periodicidade = st.selectbox(
@@ -613,13 +644,11 @@ def _render_planos_manutencao() -> None:
                     else 0
                 ),
             )
-            proxima_atual = plano.get("proxima_execucao")
-            if isinstance(proxima_atual, str):
-                proxima_atual = date.fromisoformat(proxima_atual)
-            nova_proxima = st.date_input(
-                "Proxima execucao",
-                value=proxima_atual or date.today(),
-            )
+            if nova_periodicidade != plano.get("periodicidade"):
+                st.caption(
+                    "Ao salvar uma nova periodicidade, a proxima execucao "
+                    "sera recalculada a partir de hoje."
+                )
             salvar = st.form_submit_button("Salvar alteracoes")
 
         if salvar:
@@ -628,7 +657,6 @@ def _render_planos_manutencao() -> None:
                     plano_id,
                     {
                         "periodicidade": nova_periodicidade,
-                        "proxima_execucao": nova_proxima.isoformat(),
                     },
                 )
                 st.success("Plano atualizado.")
@@ -704,13 +732,26 @@ def _render_manutencao_preventiva() -> None:
         if not planos:
             st.caption("Cadastre um plano de manutencao antes de continuar.")
         else:
+            plano_selecionado = _selecionar_plano(
+                "Plano",
+                planos,
+                key="nova_preventiva_plano",
+            )
+            if plano_selecionado:
+                if _plano_usa_hodometro(plano_selecionado):
+                    st.caption("Este plano e controlado por hodometro.")
+                else:
+                    proxima = _parse_data_plano(plano_selecionado.get("proxima_execucao"))
+                    if proxima is not None:
+                        st.caption(
+                            f"Proxima execucao prevista do plano: {proxima.isoformat()}"
+                        )
+
             with st.form("form_nova_preventiva"):
-                plano_selecionado = _selecionar_plano(
-                    "Plano",
-                    planos,
-                    key="nova_preventiva_plano",
+                data_execucao = st.date_input(
+                    "Data de execucao",
+                    value=_data_sugerida_preventiva(plano_selecionado),
                 )
-                data_execucao = st.date_input("Data de execucao", value=date.today())
                 hodometro_execucao = None
                 if plano_selecionado and _plano_usa_hodometro(plano_selecionado):
                     hodometro_execucao = st.number_input(
@@ -812,20 +853,25 @@ def _render_manutencao_preventiva() -> None:
 
         if status in {"ABERTA", "EM_EXECUCAO"}:
             custo = st.number_input(
-                "Custo (opcional)",
+                "Custo",
                 min_value=0.0,
                 step=0.01,
                 format="%.2f",
                 key=f"custo_preventiva_{manutencao_id}",
             )
             if st.button("Concluir manutencao", key=f"concluir_prev_{manutencao_id}"):
-                try:
-                    payload = {"custo": float(custo)} if custo > 0 else {}
-                    api.concluir_manutencao(manutencao_id, payload or None)
-                    st.success("Manutencao concluida.")
-                    st.rerun()
-                except Exception as exc:
-                    st.error(str(exc))
+                if custo <= 0:
+                    st.error("Informe o custo da manutencao.")
+                else:
+                    try:
+                        api.concluir_manutencao(
+                            manutencao_id,
+                            {"custo": float(custo)},
+                        )
+                        st.success("Manutencao concluida.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
 
         if status not in {"CONCLUIDA", "CANCELADA"}:
             if st.button("Cancelar manutencao", type="secondary", key=f"cancelar_prev_{manutencao_id}"):
@@ -977,19 +1023,27 @@ def _render_manutencao_corretiva() -> None:
                 "Solucao aplicada",
                 value=detalhe.get("solucao_aplicada") or "",
             )
+            custo_atual = manutencao.get("custo")
+            novo_custo = st.number_input(
+                "Custo",
+                min_value=0.0,
+                step=0.01,
+                format="%.2f",
+                value=float(custo_atual) if custo_atual is not None else 0.0,
+            )
             salvar = st.form_submit_button("Salvar detalhes")
 
         if salvar:
             try:
-                api.update_manutencao_corretiva(
-                    manutencao_id,
-                    {
-                        "dt_inicio": nova_data_defeito.isoformat(),
-                        "defeito_relatado": novo_defeito.strip() or None,
-                        "causa_raiz": nova_causa.strip() or None,
-                        "solucao_aplicada": nova_solucao.strip() or None,
-                    },
-                )
+                payload = {
+                    "dt_inicio": nova_data_defeito.isoformat(),
+                    "defeito_relatado": novo_defeito.strip() or None,
+                    "causa_raiz": nova_causa.strip() or None,
+                    "solucao_aplicada": nova_solucao.strip() or None,
+                }
+                if novo_custo > 0:
+                    payload["custo"] = float(novo_custo)
+                api.update_manutencao_corretiva(manutencao_id, payload)
                 st.success("Detalhes atualizados.")
                 st.rerun()
             except Exception as exc:
@@ -1005,21 +1059,28 @@ def _render_manutencao_corretiva() -> None:
                     st.error(str(exc))
 
         if status in {"ABERTA", "EM_EXECUCAO"}:
+            custo_salvo = manutencao.get("custo")
             custo = st.number_input(
-                "Custo (opcional)",
+                "Custo",
                 min_value=0.0,
                 step=0.01,
                 format="%.2f",
+                value=float(custo_salvo) if custo_salvo is not None else 0.0,
                 key=f"custo_corretiva_{manutencao_id}",
             )
             if st.button("Concluir manutencao", key=f"concluir_{manutencao_id}"):
-                try:
-                    payload = {"custo": float(custo)} if custo > 0 else {}
-                    api.concluir_manutencao(manutencao_id, payload or None)
-                    st.success("Manutencao concluida.")
-                    st.rerun()
-                except Exception as exc:
-                    st.error(str(exc))
+                if custo <= 0:
+                    st.error("Informe o custo da manutencao.")
+                else:
+                    try:
+                        api.concluir_manutencao(
+                            manutencao_id,
+                            {"custo": float(custo)},
+                        )
+                        st.success("Manutencao concluida.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
 
         if status not in {"CONCLUIDA", "CANCELADA"}:
             if st.button("Cancelar manutencao", type="secondary", key=f"cancelar_{manutencao_id}"):

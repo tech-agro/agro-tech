@@ -320,6 +320,12 @@ class ManutencaoService:
                 plano = self.repository.get_plano_by_id(preventiva.id_plano)
 
         custo_efetivo = custo if custo is not None else manutencao.custo
+        if manutencao.tipo in {TIPO_CORRETIVA, TIPO_PREVENTIVA}:
+            if custo_efetivo is None or custo_efetivo <= 0:
+                raise ManutencaoValidationError(
+                    "Manutencao exige custo informado para ser concluida."
+                )
+
         proxima_execucao_calc, proxima_hodometro_calc = self._recalcular_ciclo_preventivo(
             plano,
             preventiva,
@@ -421,6 +427,14 @@ class ManutencaoService:
             )
             if updated_manutencao is None:
                 raise ManutencaoError("Nao foi possivel atualizar a data do defeito.")
+
+        if payload.custo is not None:
+            updated_custo = self.repository.update_manutencao(
+                id_manutencao,
+                ManutencaoUpdateSchema(custo=payload.custo),
+            )
+            if updated_custo is None:
+                raise ManutencaoError("Nao foi possivel atualizar o custo da manutencao.")
 
         updated = self.repository.update_manutencao_corretiva(
             id_manutencao,
@@ -537,7 +551,11 @@ class ManutencaoService:
     def create_plano(self, payload: PlanoManutencaoCreateSchema) -> PlanoManutencaoDetalheSchema:
         self._garantir_maquina_existe(payload.id_maquina)
         self._validar_periodicidade(payload.periodicidade)
-        plano = self.repository.create_plano(payload)
+        proxima_execucao = payload.proxima_execucao
+        if proxima_execucao is None and payload.periodicidade:
+            proxima_execucao = self.calcular_proxima_execucao_plano(payload.periodicidade)
+        payload_efetivo = payload.model_copy(update={"proxima_execucao": proxima_execucao})
+        plano = self.repository.create_plano(payload_efetivo)
         if plano is None:
             raise ManutencaoError("Nao foi possivel criar o plano de manutencao.")
         return plano
@@ -570,7 +588,19 @@ class ManutencaoService:
         elif atual.periodicidade:
             self._validar_periodicidade(atual.periodicidade)
 
-        updated = self.repository.update_plano(id_plano, payload)
+        proxima_execucao = None
+        if (
+            payload.periodicidade is not None
+            and payload.periodicidade != atual.periodicidade
+        ):
+            proxima_execucao = self.calcular_proxima_execucao_plano(payload.periodicidade)
+
+        update_payload = PlanoManutencaoUpdateSchema(
+            id_maquina=payload.id_maquina,
+            periodicidade=payload.periodicidade,
+            proxima_execucao=proxima_execucao,
+        )
+        updated = self.repository.update_plano(id_plano, update_payload)
         if updated is None:
             raise ManutencaoError("Nao foi possivel atualizar o plano de manutencao.")
         return updated
@@ -713,6 +743,24 @@ class ManutencaoService:
                 "Manutencao vinculada esta encerrada."
             )
 
+    def calcular_proxima_execucao_plano(
+        self,
+        periodicidade: str,
+        dt_base: date | None = None,
+    ) -> date | None:
+        """Calcula a proxima execucao por data a partir da periodicidade do plano."""
+        dt_base = dt_base or date.today()
+        parsed = self._parse_periodicidade(periodicidade)
+        if parsed is None:
+            return None
+
+        unidade, quantidade = parsed
+        if unidade in {"DIA", "DIAS"}:
+            return dt_base + timedelta(days=quantidade)
+        if unidade in {"MES", "MESES"}:
+            return dt_base + timedelta(days=quantidade * 30)
+        return None
+
     def _recalcular_ciclo_preventivo(
         self,
         plano: PlanoManutencaoReadSchema | None,
@@ -723,19 +771,17 @@ class ManutencaoService:
         if plano is None or not plano.periodicidade:
             return None, None
 
+        proxima_execucao = self.calcular_proxima_execucao_plano(
+            plano.periodicidade,
+            dt_base,
+        )
+        proxima_hodometro = None
         parsed = self._parse_periodicidade(plano.periodicidade)
         if parsed is None:
-            return None, None
+            return proxima_execucao, None
 
         unidade, quantidade = parsed
-        proxima_execucao = None
-        proxima_hodometro = None
-
-        if unidade in {"DIA", "DIAS"}:
-            proxima_execucao = dt_base + timedelta(days=quantidade)
-        elif unidade in {"MES", "MESES"}:
-            proxima_execucao = dt_base + timedelta(days=quantidade * 30)
-        elif unidade in {"HORA", "HORAS"} and preventiva is not None:
+        if unidade in {"HORA", "HORAS"} and preventiva is not None:
             if preventiva.hodometro_execucao is not None:
                 proxima_hodometro = preventiva.hodometro_execucao + quantidade
 

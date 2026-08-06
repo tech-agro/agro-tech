@@ -210,12 +210,12 @@ def iniciar_manutencao(id_manutencao: int) -> dict[str, Any]:
 
 def concluir_manutencao(
     id_manutencao: int,
-    payload: dict[str, Any] | None = None,
+    payload: dict[str, Any],
 ) -> dict[str, Any]:
     resposta = _request(
         "POST",
         f"/manutencao/manutencoes/{id_manutencao}/concluir",
-        json=payload or {},
+        json=payload,
     )
     if not resposta.ok:
         raise RuntimeError(_extract_error(resposta))

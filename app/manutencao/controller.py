@@ -71,7 +71,7 @@ class ManutencaoCorretivaCreateRequest(ManutencaoCreateSchema):
 
 
 class ConcluirManutencaoRequest(BaseModel):
-    custo: float | None = Field(default=None, ge=0)
+    custo: float = Field(gt=0)
     dt_fim: date | None = None
     proxima_execucao: date | None = None
 
@@ -517,15 +517,14 @@ class ManutencaoController:
     def concluir_manutencao(
         self,
         id_manutencao: int,
-        payload: ConcluirManutencaoRequest | None = None,
+        payload: ConcluirManutencaoRequest,
     ) -> ManutencaoReadSchema:
-        body = payload or ConcluirManutencaoRequest()
         return self._handle_errors(
             lambda: self.service.concluir_manutencao(
                 id_manutencao,
-                custo=body.custo,
-                dt_fim=body.dt_fim,
-                proxima_execucao=body.proxima_execucao,
+                custo=payload.custo,
+                dt_fim=payload.dt_fim,
+                proxima_execucao=payload.proxima_execucao,
             )
         )
 
