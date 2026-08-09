@@ -20,6 +20,7 @@ from app.estoque.schemas.local_armazenamento import (
     LocalArmazenamentoCreateSchema,
     LocalArmazenamentoReadSchema,
     LocalArmazenamentoUpdateSchema,
+    OcupacaoLocalSchema,
 )
 from app.estoque.schemas.lookups import (
     CertificacaoOptionSchema,
@@ -30,7 +31,12 @@ from app.estoque.schemas.lookups import (
     LoteOptionSchema,
     ProdutoOptionSchema,
 )
-from app.estoque.schemas.lote import LoteCreateSchema, LoteReadSchema, LoteUpdateSchema
+from app.estoque.schemas.lote import (
+    LocalizacaoLoteSchema,
+    LoteCreateSchema,
+    LoteReadSchema,
+    LoteUpdateSchema,
+)
 from app.estoque.schemas.movimentacao_estoque import MovimentacaoEstoqueReadSchema
 from app.estoque.schemas.recebimento_compra import (
     RecebimentoCompraCreateSchema,
@@ -171,6 +177,11 @@ class EstoqueClient:
         self._raise_for_api(response)
         return [LoteReadSchema.model_validate(item) for item in response.json()]
 
+    def list_localizacao_lotes(self) -> list[LocalizacaoLoteSchema]:
+        response = requests.get(self._url("/estoque/lotes/localizacao"), timeout=self.timeout)
+        self._raise_for_api(response)
+        return [LocalizacaoLoteSchema.model_validate(item) for item in response.json()]
+
     def get_lote_by_codigo(self, codigo: str) -> LoteReadSchema:
         response = requests.get(
             self._url(f"/estoque/lotes/codigo/{codigo}"), timeout=self.timeout
@@ -202,6 +213,11 @@ class EstoqueClient:
         response = requests.get(self._url("/estoque/locais"), timeout=self.timeout)
         self._raise_for_api(response)
         return [LocalArmazenamentoReadSchema.model_validate(item) for item in response.json()]
+
+    def list_ocupacao_locais(self) -> list[OcupacaoLocalSchema]:
+        response = requests.get(self._url("/estoque/locais/ocupacao"), timeout=self.timeout)
+        self._raise_for_api(response)
+        return [OcupacaoLocalSchema.model_validate(item) for item in response.json()]
 
     def get_local(self, id_local: int) -> LocalArmazenamentoReadSchema:
         response = requests.get(self._url(f"/estoque/locais/{id_local}"), timeout=self.timeout)

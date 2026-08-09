@@ -42,9 +42,9 @@ from app.estoque.repository import (
 from app.estoque.schemas.certificacao_lote import CertificacaoLoteCreateSchema, CertificacaoLoteReadSchema, CertificacaoLoteUpdateSchema
 from app.estoque.schemas.entrada_colheita_estoque import EntradaColheitaCreateSchema, EntradaColheitaReadSchema
 from app.estoque.schemas.estoque import EstoqueCreateSchema, EstoqueReadSchema
-from app.estoque.schemas.local_armazenamento import LocalArmazenamentoCreateSchema, LocalArmazenamentoReadSchema, LocalArmazenamentoUpdateSchema
+from app.estoque.schemas.local_armazenamento import LocalArmazenamentoCreateSchema, LocalArmazenamentoReadSchema, LocalArmazenamentoUpdateSchema, OcupacaoLocalSchema
 from app.estoque.schemas.lookups import CertificacaoOptionSchema, ColheitaOptionSchema, EstoqueOptionSchema, ItemPedidoOptionSchema, LocalArmazenamentoOptionSchema, LoteOptionSchema, ProdutoOptionSchema
-from app.estoque.schemas.lote import LoteCreateSchema, LoteReadSchema, LoteUpdateSchema
+from app.estoque.schemas.lote import LocalizacaoLoteSchema, LoteCreateSchema, LoteReadSchema, LoteUpdateSchema
 from app.estoque.schemas.movimentacao_estoque import MovimentacaoEstoqueReadSchema
 from app.estoque.schemas.recebimento_compra import (
     RecebimentoCompraCreateSchema,
@@ -1105,6 +1105,30 @@ class EstoqueService:
             return None
 
         return LocalArmazenamentoReadSchema.model_validate(record)
+
+    def list_ocupacao_locais(self) -> list[OcupacaoLocalSchema]:
+        return [
+            OcupacaoLocalSchema(
+                id_local=local.id_local,
+                descricao=local.descricao,
+                capacidade=local.capacidade,
+                ocupado=ocupado,
+            )
+            for local, ocupado in self.local_repo.list_ocupacao()
+        ]
+
+    def list_localizacao_lotes(self) -> list[LocalizacaoLoteSchema]:
+        return [
+            LocalizacaoLoteSchema(
+                id_lote=saldo.id_lote,
+                codigo_lote=codigo,
+                produto_nome=produto_nome,
+                local_descricao=local_descricao,
+                quantidade_atual=saldo.quantidade_atual,
+                quantidade_reservada=saldo.quantidade_reservada,
+            )
+            for saldo, codigo, produto_nome, local_descricao in self.saldo_lote_repo.list_localizacoes()
+        ]
 
     def list_locais(self) -> list[LocalArmazenamentoReadSchema]:
         return [

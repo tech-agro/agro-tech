@@ -39,3 +39,12 @@ class LoteReadSchema(BaseModel):
     tipo_origem: LotOriginType | None = None
     quantidade_inicial: Decimal | None = None
     produto_nome: str | None = None
+
+
+class LocalizacaoLoteSchema(BaseModel):
+    id_lote: int
+    codigo_lote: str
+    produto_nome: str | None
+    local_descricao: str
+    quantidade_atual: Decimal
+    quantidade_reservada: Decimal

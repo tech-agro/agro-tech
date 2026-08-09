@@ -23,3 +23,10 @@ class LocalArmazenamentoReadSchema(BaseModel):
     id_local: int
     descricao: str
     capacidade: Decimal | None
+
+
+class OcupacaoLocalSchema(BaseModel):
+    id_local: int
+    descricao: str
+    capacidade: Decimal | None
+    ocupado: Decimal

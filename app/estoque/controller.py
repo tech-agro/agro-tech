@@ -18,8 +18,14 @@ from app.estoque.schemas.local_armazenamento import (
     LocalArmazenamentoCreateSchema,
     LocalArmazenamentoReadSchema,
     LocalArmazenamentoUpdateSchema,
+    OcupacaoLocalSchema,
 )
-from app.estoque.schemas.lote import LoteCreateSchema, LoteReadSchema, LoteUpdateSchema
+from app.estoque.schemas.lote import (
+    LocalizacaoLoteSchema,
+    LoteCreateSchema,
+    LoteReadSchema,
+    LoteUpdateSchema,
+)
 from app.estoque.schemas.movimentacao_estoque import MovimentacaoEstoqueReadSchema
 from app.estoque.schemas.recebimento_compra import (
     RecebimentoCompraCreateSchema,
@@ -63,6 +69,9 @@ class EstoqueController:
         self.router.get(
             "/lotes/codigo/{codigo}", response_model=LoteReadSchema
         )(self.get_lote_by_codigo)
+        self.router.get(
+            "/lotes/localizacao", response_model=list[LocalizacaoLoteSchema]
+        )(self.list_localizacao_lotes)
         self.router.get("/lotes/{id_lote}", response_model=LoteReadSchema)(self.get_lote)
         self.router.patch("/lotes/{id_lote}", response_model=LoteReadSchema)(self.update_lote)
         self.router.delete("/lotes/{id_lote}", status_code=status.HTTP_204_NO_CONTENT)(
@@ -76,6 +85,9 @@ class EstoqueController:
         self.router.get(
             "/locais", response_model=list[LocalArmazenamentoReadSchema]
         )(self.list_locais)
+        self.router.get(
+            "/locais/ocupacao", response_model=list[OcupacaoLocalSchema]
+        )(self.list_ocupacao_locais)
         self.router.get(
             "/locais/{id_local}", response_model=LocalArmazenamentoReadSchema
         )(self.get_local)
@@ -197,6 +209,9 @@ class EstoqueController:
     def list_lotes_vencidos(self) -> list[LoteReadSchema]:
         return self.service.list_lotes_vencidos()
 
+    def list_localizacao_lotes(self) -> list[LocalizacaoLoteSchema]:
+        return self.service.list_localizacao_lotes()
+
     def list_lotes_proximos_vencimento(self, dias: int = 30) -> list[LoteReadSchema]:
         return self.service.list_lotes_proximos_vencimento(dias)
 
@@ -243,6 +258,9 @@ class EstoqueController:
 
     def list_locais(self) -> list[LocalArmazenamentoReadSchema]:
         return self.service.list_locais()
+
+    def list_ocupacao_locais(self) -> list[OcupacaoLocalSchema]:
+        return self.service.list_ocupacao_locais()
 
     def get_local(self, id_local: int) -> LocalArmazenamentoReadSchema:
         local = self.service.get_local(id_local)
