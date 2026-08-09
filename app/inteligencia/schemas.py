@@ -45,7 +45,7 @@ class MedicaoIndicadorReadSchema(BaseModel):
 
     id_medicao: int
     id_indicador: int
-    id_safra: int
+    id_safra: int | None
     valor: Decimal | None
     data_referencia: date | None
     indicador_nome: str | None = None

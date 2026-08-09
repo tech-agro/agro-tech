@@ -176,7 +176,7 @@ class MedicaoIndicadorRepository(BaseRepository[MedicaoIndicadorModel]):
                     SafraRef.nome,
                 )
                 .join(IndicadorModel, IndicadorModel.id_indicador == MedicaoIndicadorModel.id_indicador)
-                .join(SafraRef, SafraRef.id_safra == MedicaoIndicadorModel.id_safra)
+                .outerjoin(SafraRef, SafraRef.id_safra == MedicaoIndicadorModel.id_safra)
                 .order_by(
                     MedicaoIndicadorModel.data_referencia.desc(),
                     MedicaoIndicadorModel.id_medicao.desc(),
@@ -301,7 +301,7 @@ class MedicaoIndicadorRepository(BaseRepository[MedicaoIndicadorModel]):
                     IndicadorModel,
                     IndicadorModel.id_indicador == MedicaoIndicadorModel.id_indicador,
                 )
-                .join(SafraRef, SafraRef.id_safra == MedicaoIndicadorModel.id_safra)
+                .outerjoin(SafraRef, SafraRef.id_safra == MedicaoIndicadorModel.id_safra)
                 .where(MedicaoIndicadorModel.id_medicao == id_medicao)
             ).first()
             if row is None:
