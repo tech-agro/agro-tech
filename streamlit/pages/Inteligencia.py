@@ -14,6 +14,7 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 import streamlit as st
 
 from app.inteligencia.schemas import (
+    ClimaSyncRequestSchema,
     IndicadorCreateSchema,
     IndicadorUpdateSchema,
     MedicaoIndicadorCreateSchema,
@@ -334,12 +335,58 @@ def _fmt_decimal(valor: Decimal | None) -> str:
     return f"{valor:.2f}"
 
 
+def _render_sync_clima() -> None:
+    st.markdown(
+        "Busca a previsao/observacao atual na Open-Meteo para as coordenadas "
+        "informadas e registra as medicoes de Temperatura, Umidade relativa "
+        "e Precipitacao."
+    )
+
+    try:
+        safras = _listar_safras()
+    except Exception as exc:
+        st.warning(f"Nao foi possivel carregar as safras: {exc}")
+        safras = []
+
+    mapa_safra = {"Nenhuma": None}
+    mapa_safra.update({_label_safra(s): s["id_safra"] for s in safras})
+
+    with st.form("form_sync_clima"):
+        col_lat, col_lon = st.columns(2)
+        with col_lat:
+            latitude = st.number_input(
+                "Latitude", min_value=-90.0, max_value=90.0, value=0.0, format="%.6f"
+            )
+        with col_lon:
+            longitude = st.number_input(
+                "Longitude", min_value=-180.0, max_value=180.0, value=0.0, format="%.6f"
+            )
+        safra_escolha = st.selectbox("Safra (opcional)", list(mapa_safra.keys()))
+        data_ref = st.date_input("Data referencia", value=date.today())
+        sincronizar = st.form_submit_button("Sincronizar clima")
+
+    if sincronizar:
+        try:
+            resultado = _client().sync_clima(
+                ClimaSyncRequestSchema(
+                    latitude=latitude,
+                    longitude=longitude,
+                    id_safra=mapa_safra[safra_escolha],
+                    data_referencia=data_ref,
+                )
+            )
+            toast_ok(f"{len(resultado.ids_medicao)} medicoes de clima registradas.")
+            st.rerun()
+        except InteligenciaApiError as exc:
+            toast_error(exc)
+
+
 require_login()
 
 setup_page("Inteligencia", "Indicadores, medicoes e agregacao basica de KPIs.")
 
-tab_indicadores, tab_medicoes, tab_agregacao = st.tabs(
-    ["Indicadores", "Medicoes", "Agregacao"]
+tab_indicadores, tab_medicoes, tab_agregacao, tab_clima = st.tabs(
+    ["Indicadores", "Medicoes", "Agregacao", "Sync Clima"]
 )
 
 with tab_indicadores:
@@ -350,3 +397,6 @@ with tab_medicoes:
 
 with tab_agregacao:
     _render_agregacao()
+
+with tab_clima:
+    _render_sync_clima()

@@ -52,6 +52,17 @@ class MedicaoIndicadorReadSchema(BaseModel):
     safra_nome: str | None = None
 
 
+class ClimaSyncRequestSchema(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    id_safra: int | None = None
+    data_referencia: date | None = None
+
+
+class ClimaSyncResponseSchema(BaseModel):
+    ids_medicao: list[int]
+
+
 class IndicadorAgregacaoSchema(BaseModel):
     id_indicador: int
     indicador_nome: str | None = None
