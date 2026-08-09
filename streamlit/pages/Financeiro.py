@@ -27,6 +27,7 @@ from components.financeiro.pagamento_tables import pagamentos_df
 from components.financeiro.conta_receber_tables import contas_receber_dataframe
 from components.financeiro.recebimento_tables import recebimentos_df
 from components.financeiro.fluxo_caixa_tables import fluxo_caixa_df
+from components.financeiro import intelligence
 
 from components.shared.screens import (
     setup_page,
@@ -54,6 +55,8 @@ def _client() -> FinanceiroClient:
 
 
 (
+    tab_visao_geral,
+    tab_vencimentos,
     tab_pagar,
     tab_pagamentos,
     tab_receber,
@@ -61,6 +64,8 @@ def _client() -> FinanceiroClient:
     tab_fluxo,
 ) = st.tabs(
     [
+        "Visão geral",
+        "Vencimentos",
         "Contas a pagar",
         "Pagamentos",
         "Contas a receber",
@@ -68,6 +73,45 @@ def _client() -> FinanceiroClient:
         "Fluxo de caixa",
     ]
 )
+
+
+# ============================================================
+# VISAO GERAL (inteligencia financeira)
+# ============================================================
+
+with tab_visao_geral:
+    try:
+        _contas_pagar = _client().list_contas_pagar(limit=500)
+        _contas_receber = _client().list_contas_receber(limit=500)
+        _fluxo_90d = _client().list_fluxo_por_periodo(
+            data_inicio=date.today() - timedelta(days=90),
+            data_fim=date.today(),
+            limit=500,
+        )
+    except FinanceiroApiError as exc:
+        toast_error(exc)
+        st.stop()
+
+    intelligence.render_kpis(_contas_pagar, _contas_receber)
+    st.caption("Entradas e saídas de caixa — últimos 90 dias")
+    intelligence.render_fluxo_chart(_fluxo_90d)
+
+
+# ============================================================
+# VENCIMENTOS (aging)
+# ============================================================
+
+with tab_vencimentos:
+    try:
+        _contas_pagar_v = _client().list_contas_pagar(limit=500)
+        _contas_receber_v = _client().list_contas_receber(limit=500)
+    except FinanceiroApiError as exc:
+        toast_error(exc)
+        st.stop()
+
+    intelligence.render_aging_chart(_contas_pagar_v, _contas_receber_v)
+    st.caption("Contas em atraso")
+    intelligence.render_criticas_table(_contas_pagar_v, _contas_receber_v)
 
 
 # ============================================================
