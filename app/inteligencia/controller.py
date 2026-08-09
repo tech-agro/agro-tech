@@ -26,6 +26,7 @@ from app.inteligencia.schemas import (
 )
 from app.inteligencia.service import InteligenciaService
 from app.integrations.exceptions import IntegrationError
+from app.integrations.schemas import WeatherData
 
 
 class InteligenciaController:
@@ -73,6 +74,10 @@ class InteligenciaController:
             "/indicadores/clima/sync",
             response_model=ClimaSyncResponseSchema,
         )(self.sync_clima)
+        self.router.get(
+            "/indicadores/clima/atual",
+            response_model=WeatherData,
+        )(self.clima_atual)
 
         self.router.post("/medicoes", response_model=MedicaoIndicadorReadSchema)(
             self.create_medicao
@@ -145,6 +150,12 @@ class InteligenciaController:
             )
         except InteligenciaError as exc:
             raise self._map_error(exc) from exc
+
+    def clima_atual(self, latitude: float, longitude: float) -> WeatherData:
+        try:
+            return self.service.consultar_clima_atual(latitude=latitude, longitude=longitude)
+        except IntegrationError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
 
     def sync_clima(self, payload: ClimaSyncRequestSchema) -> ClimaSyncResponseSchema:
         try:

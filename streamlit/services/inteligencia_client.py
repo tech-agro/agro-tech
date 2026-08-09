@@ -21,6 +21,7 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
 )
+from app.integrations.schemas import WeatherData
 from services.identity_client import SESSION_KEY_TOKEN
 
 
@@ -221,6 +222,15 @@ class InteligenciaClient:
         self._raise_for_api(response)
 
     # --- Clima (Open-Meteo) ---
+
+    def get_clima_atual(self, *, latitude: float, longitude: float) -> WeatherData:
+        response = self._request(
+            "GET",
+            "/inteligencia/indicadores/clima/atual",
+            params={"latitude": latitude, "longitude": longitude},
+        )
+        self._raise_for_api(response)
+        return WeatherData.model_validate(response.json())
 
     def sync_clima(self, payload: ClimaSyncRequestSchema) -> ClimaSyncResponseSchema:
         response = self._request(

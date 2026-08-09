@@ -14,6 +14,7 @@ from app.inteligencia.errors import (
     InteligenciaValidationError,
 )
 from app.integrations.open_meteo import OpenMeteoClient
+from app.integrations.schemas import WeatherData
 from app.inteligencia.repository import (
     IndicadorFilters,
     IndicadorRepository,
@@ -276,6 +277,16 @@ class InteligenciaService:
                 },
             ).first()
             return int(med[0]) if med is not None else None
+
+    def consultar_clima_atual(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        client: OpenMeteoClient | None = None,
+    ) -> WeatherData:
+        """Leitura ao vivo do clima (sem persistir), para widgets de dashboard."""
+        return (client or OpenMeteoClient()).fetch(latitude, longitude)
 
     def register_weather_measurement(
         self,
