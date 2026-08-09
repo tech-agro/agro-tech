@@ -16,6 +16,7 @@ class LoteModel(Base):
     """Product lot used for agricultural traceability (harvest, purchase, etc.)."""
 
     __tablename__ = "lote"
+    __table_args__ = {"extend_existing": True}
 
     id_lote: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 

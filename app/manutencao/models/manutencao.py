@@ -26,6 +26,7 @@ class ManutencaoModel(Base):
     """
 
     __tablename__ = "manutencao"
+    __table_args__ = {"extend_existing": True}
 
     id_manutencao: Mapped[int] = mapped_column(
         BigInteger,

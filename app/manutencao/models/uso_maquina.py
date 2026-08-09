@@ -23,6 +23,7 @@ class MaquinaModel(Base):
     """
 
     __tablename__ = "maquina"
+    __table_args__ = {"extend_existing": True}
 
     id_maquina: Mapped[int] = mapped_column(
         BigInteger,
