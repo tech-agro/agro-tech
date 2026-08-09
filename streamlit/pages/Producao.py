@@ -660,157 +660,182 @@ with aba_operacoes:
 # Monitoramento (clima, solo, safra)
 # ----------------------------------------------------------------------
 with aba_monitoramento:
-    st.subheader("Condicoes climaticas (da safra ativa)")
-    if id_safra_ativa is None or not talhoes_safra:
-        st.info("Selecione uma safra ativa com talhoes cadastrados.")
-    else:
-        with st.form("form_condicao_climatica"):
-            id_talhao_clima = _selecionar(
-                "Talhao", talhoes_safra, lambda r: f"{r['nome']} (ID {r['id_talhao']})", "id_talhao", "clima_talhao"
-            )
-            dt_registro = _combinar_data_hora("Registro", "clima_registro", obrigatorio=True)
-            temperatura_min = st.number_input("Temperatura minima", step=0.1, key="clima_temp_min")
-            temperatura_max = st.number_input("Temperatura maxima", step=0.1, key="clima_temp_max")
-            umidade_relativa = st.number_input("Umidade relativa (%)", min_value=0.0, max_value=100.0, step=0.1, key="clima_umidade")
-            precipitacao_mm = st.number_input("Precipitacao (mm)", min_value=0.0, step=0.1, key="clima_precipitacao")
-            velocidade_vento = st.number_input("Velocidade do vento", min_value=0.0, step=0.1, key="clima_vento")
-            direcao_vento = st.text_input("Direcao do vento", value="", key="clima_direcao")
-            radiacao_solar = st.number_input("Radiacao solar", min_value=0.0, step=0.1, key="clima_radiacao")
-            if st.form_submit_button("Registrar condicao climatica"):
-                try:
-                    producao_api.criar(
-                        "/condicoes-climaticas",
-                        {
-                            "id_talhao": id_talhao_clima,
-                            "dt_registro": dt_registro.isoformat(),
-                            "temperatura_min": temperatura_min or None,
-                            "temperatura_max": temperatura_max or None,
-                            "umidade_relativa": umidade_relativa or None,
-                            "precipitacao_mm": precipitacao_mm or None,
-                            "velocidade_vento": velocidade_vento or None,
-                            "direcao_vento": direcao_vento or None,
-                            "radiacao_solar": radiacao_solar or None,
-                        },
-                    )
-                    _invalidar_cache()
-                    st.success("Condicao climatica registrada.")
-                    st.rerun()
-                except RuntimeError as exc:
-                    st.error(str(exc))
-        ids_talhoes_safra = {t["id_talhao"] for t in talhoes_safra}
-        condicoes = [c for c in _listar("/condicoes-climaticas") if c["id_talhao"] in ids_talhoes_safra]
-        _tabela(condicoes)
-        id_condicao_sel = _selecionar(
-            "Condicao climatica", condicoes, lambda r: f"#{r['id_condicao']} - {r['dt_registro']}", "id_condicao", "sel_clima"
-        )
-        _excluir("condicao climatica", "/condicoes-climaticas", id_condicao_sel, "clima")
+    aba_clima_monit, aba_solo_monit, aba_fenologia_monit = st.tabs(
+        ["🌦️ Clima", "🧪 Solo", "🌱 Fenologia"]
+    )
 
-    st.divider()
-    st.subheader("Analises de solo")
-    with st.form("form_analise_solo"):
-        id_solo_analise = st.number_input("ID do solo", min_value=1, step=1, key="analise_id_solo", help="Veja o ID em Fazendas e Talhoes > Solo do talhao selecionado.")
-        id_funcionario_analise = st.number_input("ID do funcionario (Identidade/RH)", min_value=1, step=1, key="analise_id_funcionario")
-        dt_coleta = st.date_input("Data de coleta", value=None, key="analise_dt_coleta")
-        dt_resultado = st.date_input("Data de resultado", value=None, key="analise_dt_resultado")
-        ph = st.number_input("pH", min_value=0.0, max_value=14.0, step=0.1, key="analise_ph")
-        materia_organica = st.number_input("Materia organica", min_value=0.0, step=0.1, key="analise_materia_organica")
-        fosforo = st.number_input("Fosforo", min_value=0.0, step=0.1, key="analise_fosforo")
-        potassio = st.number_input("Potassio", min_value=0.0, step=0.1, key="analise_potassio")
-        calcio = st.number_input("Calcio", min_value=0.0, step=0.1, key="analise_calcio")
-        magnesio = st.number_input("Magnesio", min_value=0.0, step=0.1, key="analise_magnesio")
-        saturacao_bases = st.number_input("Saturacao de bases", min_value=0.0, step=0.1, key="analise_saturacao")
-        observacao_analise = st.text_area("Observacao", value="", key="analise_observacao")
-        if st.form_submit_button("Registrar analise de solo"):
-            try:
-                producao_api.criar(
-                    "/analises-solo",
-                    {
-                        "id_solo": int(id_solo_analise),
-                        "id_safra": id_safra_ativa,
-                        "id_funcionario": int(id_funcionario_analise),
-                        "dt_coleta": dt_coleta.isoformat() if dt_coleta else None,
-                        "dt_resultado": dt_resultado.isoformat() if dt_resultado else None,
-                        "ph": ph or None,
-                        "materia_organica": materia_organica or None,
-                        "fosforo": fosforo or None,
-                        "potassio": potassio or None,
-                        "calcio": calcio or None,
-                        "magnesio": magnesio or None,
-                        "saturacao_bases": saturacao_bases or None,
-                        "observacao": observacao_analise or None,
-                    },
+    with aba_clima_monit:
+        st.subheader("Condicoes climaticas (da safra ativa)")
+        if id_safra_ativa is None or not talhoes_safra:
+            st.info("Selecione uma safra ativa com talhoes cadastrados.")
+        else:
+            with st.form("form_condicao_climatica"):
+                id_talhao_clima = _selecionar(
+                    "Talhao", talhoes_safra, lambda r: f"{r['nome']} (ID {r['id_talhao']})", "id_talhao", "clima_talhao"
                 )
-                _invalidar_cache()
-                st.success("Analise de solo registrada.")
-                st.rerun()
-            except RuntimeError as exc:
-                st.error(str(exc))
-    analises = _listar("/analises-solo", id_safra=id_safra_ativa) if id_safra_ativa else []
-    _tabela(analises)
-    id_analise_sel = _selecionar("Analise de solo", analises, lambda r: f"#{r['id_analise']} - solo {r['id_solo']}", "id_analise", "sel_analise")
-    _excluir("analise de solo", "/analises-solo", id_analise_sel, "analise")
+                dt_registro = _combinar_data_hora("Registro", "clima_registro", obrigatorio=True)
 
-    st.divider()
-    st.subheader("Monitoramento de safra (da safra ativa)")
-    if id_safra_ativa is None or not talhoes_safra:
-        st.info("Selecione uma safra ativa com talhoes cadastrados.")
-        monitoramentos = []
-    else:
-        with st.form("form_monitoramento"):
-            id_talhao_monit = _selecionar(
-                "Talhao", talhoes_safra, lambda r: f"{r['nome']} (ID {r['id_talhao']})", "id_talhao", "monit_talhao"
-            )
-            id_funcionario_monit = st.number_input("ID do funcionario (Identidade/RH)", min_value=1, step=1, key="monit_id_funcionario")
-            dt_monitoramento = _combinar_data_hora("Monitoramento", "monit_dt", obrigatorio=True)
-            estagio_fenologico = st.text_input("Estagio fenologico", value="", key="monit_estagio")
-            observacao_monit = st.text_area("Observacao", value="", key="monit_observacao")
-            if st.form_submit_button("Registrar monitoramento"):
-                try:
-                    producao_api.criar(
-                        "/monitoramentos-safra",
-                        {
-                            "id_safra": id_safra_ativa,
-                            "id_talhao": id_talhao_monit,
-                            "id_funcionario": int(id_funcionario_monit),
-                            "dt_monitoramento": dt_monitoramento.isoformat(),
-                            "estagio_fenologico": estagio_fenologico or None,
-                            "observacao": observacao_monit or None,
-                        },
-                    )
-                    _invalidar_cache()
-                    st.success("Monitoramento registrado.")
-                    st.rerun()
-                except RuntimeError as exc:
-                    st.error(str(exc))
-        monitoramentos = _listar("/monitoramentos-safra", id_safra=id_safra_ativa)
-        _tabela(monitoramentos)
-        id_monitoramento_sel = _selecionar(
-            "Monitoramento", monitoramentos, lambda r: f"#{r['id_monitoramento']} - {r['dt_monitoramento']}", "id_monitoramento", "sel_monitoramento"
-        )
-        _excluir("monitoramento de safra", "/monitoramentos-safra", id_monitoramento_sel, "monitoramento")
+                st.caption("Essenciais")
+                col_temp, col_umidade, col_precip = st.columns(3)
+                with col_temp:
+                    temperatura_min = st.number_input("Temperatura minima", step=0.1, key="clima_temp_min")
+                    temperatura_max = st.number_input("Temperatura maxima", step=0.1, key="clima_temp_max")
+                with col_umidade:
+                    umidade_relativa = st.number_input("Umidade relativa (%)", min_value=0.0, max_value=100.0, step=0.1, key="clima_umidade")
+                with col_precip:
+                    precipitacao_mm = st.number_input("Precipitacao (mm)", min_value=0.0, step=0.1, key="clima_precipitacao")
 
-        if id_monitoramento_sel is not None:
-            st.markdown(f"**Parametros do monitoramento #{id_monitoramento_sel}**")
-            with st.form("form_parametro"):
-                nome_parametro = st.text_input("Nome do parametro", value="")
-                valor_parametro = st.number_input("Valor", step=0.1, key="param_valor")
-                unidade_parametro = st.text_input("Unidade", value="", key="param_unidade")
-                if st.form_submit_button("Adicionar parametro"):
+                st.caption("Opcionais")
+                col_vento1, col_vento2, col_radiacao = st.columns(3)
+                with col_vento1:
+                    velocidade_vento = st.number_input("Velocidade do vento", min_value=0.0, step=0.1, key="clima_vento")
+                with col_vento2:
+                    direcao_vento = st.text_input("Direcao do vento", value="", key="clima_direcao")
+                with col_radiacao:
+                    radiacao_solar = st.number_input("Radiacao solar", min_value=0.0, step=0.1, key="clima_radiacao")
+
+                if st.form_submit_button("Registrar condicao climatica"):
                     try:
                         producao_api.criar(
-                            f"/monitoramentos-safra/{id_monitoramento_sel}/parametros",
-                            {"nome_parametro": nome_parametro, "valor": valor_parametro or None, "unidade": unidade_parametro or None},
+                            "/condicoes-climaticas",
+                            {
+                                "id_talhao": id_talhao_clima,
+                                "dt_registro": dt_registro.isoformat(),
+                                "temperatura_min": temperatura_min or None,
+                                "temperatura_max": temperatura_max or None,
+                                "umidade_relativa": umidade_relativa or None,
+                                "precipitacao_mm": precipitacao_mm or None,
+                                "velocidade_vento": velocidade_vento or None,
+                                "direcao_vento": direcao_vento or None,
+                                "radiacao_solar": radiacao_solar or None,
+                            },
                         )
-                        st.success("Parametro adicionado.")
+                        _invalidar_cache()
+                        st.success("Condicao climatica registrada.")
                         st.rerun()
                     except RuntimeError as exc:
                         st.error(str(exc))
-            parametros = producao_api.listar(f"/monitoramentos-safra/{id_monitoramento_sel}/parametros")
-            _tabela(parametros)
-            id_parametro_sel = _selecionar(
-                "Parametro", parametros, lambda r: f"{r['nome_parametro']} = {r.get('valor')}", "id_parametro", "sel_parametro"
+            ids_talhoes_safra = {t["id_talhao"] for t in talhoes_safra}
+            condicoes = [c for c in _listar("/condicoes-climaticas") if c["id_talhao"] in ids_talhoes_safra]
+            _tabela(condicoes)
+            id_condicao_sel = _selecionar(
+                "Condicao climatica", condicoes, lambda r: f"#{r['id_condicao']} - {r['dt_registro']}", "id_condicao", "sel_clima"
             )
-            _excluir("parametro de monitoramento", "/parametros-monitoramento", id_parametro_sel, "parametro")
+            _excluir("condicao climatica", "/condicoes-climaticas", id_condicao_sel, "clima")
+
+    with aba_solo_monit:
+        st.subheader("Analises de solo")
+        with st.form("form_analise_solo"):
+            col_id, col_macro, col_micro = st.columns(3)
+            with col_id:
+                st.caption("Identificacao")
+                id_solo_analise = st.number_input("ID do solo", min_value=1, step=1, key="analise_id_solo", help="Veja o ID em Fazendas e Talhoes > Solo do talhao selecionado.")
+                id_funcionario_analise = st.number_input("ID do funcionario (Identidade/RH)", min_value=1, step=1, key="analise_id_funcionario")
+                dt_coleta = st.date_input("Data de coleta", value=None, key="analise_dt_coleta")
+                dt_resultado = st.date_input("Data de resultado", value=None, key="analise_dt_resultado")
+            with col_macro:
+                st.caption("Macronutrientes")
+                ph = st.number_input("pH", min_value=0.0, max_value=14.0, step=0.1, key="analise_ph")
+                materia_organica = st.number_input("Materia organica", min_value=0.0, step=0.1, key="analise_materia_organica")
+                fosforo = st.number_input("Fosforo", min_value=0.0, step=0.1, key="analise_fosforo")
+                potassio = st.number_input("Potassio", min_value=0.0, step=0.1, key="analise_potassio")
+            with col_micro:
+                st.caption("Demais parametros")
+                calcio = st.number_input("Calcio", min_value=0.0, step=0.1, key="analise_calcio")
+                magnesio = st.number_input("Magnesio", min_value=0.0, step=0.1, key="analise_magnesio")
+                saturacao_bases = st.number_input("Saturacao de bases", min_value=0.0, step=0.1, key="analise_saturacao")
+            observacao_analise = st.text_area("Observacao", value="", key="analise_observacao")
+            if st.form_submit_button("Registrar analise de solo"):
+                try:
+                    producao_api.criar(
+                        "/analises-solo",
+                        {
+                            "id_solo": int(id_solo_analise),
+                            "id_safra": id_safra_ativa,
+                            "id_funcionario": int(id_funcionario_analise),
+                            "dt_coleta": dt_coleta.isoformat() if dt_coleta else None,
+                            "dt_resultado": dt_resultado.isoformat() if dt_resultado else None,
+                            "ph": ph or None,
+                            "materia_organica": materia_organica or None,
+                            "fosforo": fosforo or None,
+                            "potassio": potassio or None,
+                            "calcio": calcio or None,
+                            "magnesio": magnesio or None,
+                            "saturacao_bases": saturacao_bases or None,
+                            "observacao": observacao_analise or None,
+                        },
+                    )
+                    _invalidar_cache()
+                    st.success("Analise de solo registrada.")
+                    st.rerun()
+                except RuntimeError as exc:
+                    st.error(str(exc))
+        analises = _listar("/analises-solo", id_safra=id_safra_ativa) if id_safra_ativa else []
+        _tabela(analises)
+        id_analise_sel = _selecionar("Analise de solo", analises, lambda r: f"#{r['id_analise']} - solo {r['id_solo']}", "id_analise", "sel_analise")
+        _excluir("analise de solo", "/analises-solo", id_analise_sel, "analise")
+
+    with aba_fenologia_monit:
+        st.subheader("Monitoramento de safra (da safra ativa)")
+        if id_safra_ativa is None or not talhoes_safra:
+            st.info("Selecione uma safra ativa com talhoes cadastrados.")
+            monitoramentos = []
+        else:
+            with st.form("form_monitoramento"):
+                id_talhao_monit = _selecionar(
+                    "Talhao", talhoes_safra, lambda r: f"{r['nome']} (ID {r['id_talhao']})", "id_talhao", "monit_talhao"
+                )
+                id_funcionario_monit = st.number_input("ID do funcionario (Identidade/RH)", min_value=1, step=1, key="monit_id_funcionario")
+                dt_monitoramento = _combinar_data_hora("Monitoramento", "monit_dt", obrigatorio=True)
+                estagio_fenologico = st.text_input("Estagio fenologico", value="", key="monit_estagio")
+                observacao_monit = st.text_area("Observacao", value="", key="monit_observacao")
+                if st.form_submit_button("Registrar monitoramento"):
+                    try:
+                        producao_api.criar(
+                            "/monitoramentos-safra",
+                            {
+                                "id_safra": id_safra_ativa,
+                                "id_talhao": id_talhao_monit,
+                                "id_funcionario": int(id_funcionario_monit),
+                                "dt_monitoramento": dt_monitoramento.isoformat(),
+                                "estagio_fenologico": estagio_fenologico or None,
+                                "observacao": observacao_monit or None,
+                            },
+                        )
+                        _invalidar_cache()
+                        st.success("Monitoramento registrado.")
+                        st.rerun()
+                    except RuntimeError as exc:
+                        st.error(str(exc))
+            monitoramentos = _listar("/monitoramentos-safra", id_safra=id_safra_ativa)
+            _tabela(monitoramentos)
+            id_monitoramento_sel = _selecionar(
+                "Monitoramento", monitoramentos, lambda r: f"#{r['id_monitoramento']} - {r['dt_monitoramento']}", "id_monitoramento", "sel_monitoramento"
+            )
+            _excluir("monitoramento de safra", "/monitoramentos-safra", id_monitoramento_sel, "monitoramento")
+
+            if id_monitoramento_sel is not None:
+                st.markdown(f"**Parametros do monitoramento #{id_monitoramento_sel}**")
+                with st.form("form_parametro"):
+                    nome_parametro = st.text_input("Nome do parametro", value="")
+                    valor_parametro = st.number_input("Valor", step=0.1, key="param_valor")
+                    unidade_parametro = st.text_input("Unidade", value="", key="param_unidade")
+                    if st.form_submit_button("Adicionar parametro"):
+                        try:
+                            producao_api.criar(
+                                f"/monitoramentos-safra/{id_monitoramento_sel}/parametros",
+                                {"nome_parametro": nome_parametro, "valor": valor_parametro or None, "unidade": unidade_parametro or None},
+                            )
+                            st.success("Parametro adicionado.")
+                            st.rerun()
+                        except RuntimeError as exc:
+                            st.error(str(exc))
+                parametros = producao_api.listar(f"/monitoramentos-safra/{id_monitoramento_sel}/parametros")
+                _tabela(parametros)
+                id_parametro_sel = _selecionar(
+                    "Parametro", parametros, lambda r: f"{r['nome_parametro']} = {r.get('valor')}", "id_parametro", "sel_parametro"
+                )
+                _excluir("parametro de monitoramento", "/parametros-monitoramento", id_parametro_sel, "parametro")
 
 # ----------------------------------------------------------------------
 # Colheita
