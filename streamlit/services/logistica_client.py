@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import requests
 
 from app.core.config import settings
+from app.logistica.schemas.address import AddressLookupSchema
 from app.logistica.schemas.dispatch import (
     DispatchCreateSchema,
     DispatchReadSchema,
@@ -65,6 +68,16 @@ _API_DETAIL_TO_PT: tuple[tuple[str, str], ...] = (
     ("Weighing not found", "Pesagem nao encontrada."),
     ("Dispatch not found", "Expedicao nao encontrada."),
     ("Vehicle not found", "Veiculo nao encontrado."),
+    ("CEP must contain exactly 8 digits.", "Informe um CEP valido com 8 digitos."),
+    (
+        "Nao foi possivel consultar o CEP no ViaCEP",
+        "Nao foi possivel consultar o CEP. Tente novamente em instantes.",
+    ),
+    (
+        "ViaCEP payload could not be mapped",
+        "Resposta invalida do servico de CEP. Tente novamente.",
+    ),
+    ("not found", "CEP nao encontrado."),
     ("foreign key", "Nao foi possivel excluir: ha registros vinculados."),
 )
 
@@ -162,6 +175,15 @@ class LogisticsClient:
         )
         self._raise_for_api(response)
         return [DriverOptionSchema.model_validate(i) for i in response.json()]
+
+    def lookup_address_by_cep(self, cep: str) -> AddressLookupSchema:
+        encoded_cep = quote(cep.strip(), safe="")
+        response = requests.get(
+            self._url(f"/logistics/addresses/by-cep/{encoded_cep}"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return AddressLookupSchema.model_validate(response.json())
 
     # --- Vehicles ---
 

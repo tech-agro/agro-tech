@@ -19,10 +19,16 @@ Envia informações para:
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_session
+from app.integrations.exceptions import (
+    IntegrationHttpError,
+    IntegrationNotFoundError,
+    IntegrationValidationError,
+)
 from app.logistica.enum import DispatchStatus, OperationStatus, OperationType, VehicleType
 from app.logistica.errors import LogisticsError
 from app.logistica.models.dispatch import DispatchModel
@@ -57,7 +63,7 @@ from app.logistica.schemas.location import (
     LocationReadSchema,
     LocationUpdateSchema,
 )
-from app.logistica.schemas.address import AddressReadSchema
+from app.logistica.schemas.address import AddressLookupSchema, AddressReadSchema
 from app.logistica.schemas.operation import (
     OperationCreateSchema,
     OperationReadSchema,
@@ -73,6 +79,9 @@ from app.logistica.schemas.weighing import (
     WeighingReadSchema,
     WeighingUpdateSchema,
 )
+
+if TYPE_CHECKING:
+    from app.integrations.viacep import ViaCepClient
 
 _LOAD_EDITABLE_STATUSES = frozenset(
     {OperationStatus.ABERTA, OperationStatus.EM_ANDAMENTO}
@@ -95,6 +104,7 @@ class LogisticsService:
         weighing_repo: WeighingRepository | None = None,
         dispatch_repo: DispatchRepository | None = None,
         lookup_repo: LogisticsLookupRepository | None = None,
+        viacep_client: ViaCepClient | None = None,
     ) -> None:
         self.vehicle_repo = vehicle_repo or VehicleRepository()
         self.address_repo = address_repo or AddressRepository()
@@ -104,6 +114,28 @@ class LogisticsService:
         self.weighing_repo = weighing_repo or WeighingRepository()
         self.dispatch_repo = dispatch_repo or DispatchRepository()
         self.lookup_repo = lookup_repo or LogisticsLookupRepository()
+        self._viacep_client = viacep_client
+
+    def _viacep(self) -> ViaCepClient:
+        if self._viacep_client is None:
+            from app.integrations.viacep import ViaCepClient
+
+            self._viacep_client = ViaCepClient()
+        return self._viacep_client
+
+    def lookup_address_by_cep(self, cep: str) -> AddressLookupSchema:
+        """Busca endereco no ViaCEP e retorna campos para autocompletar cadastro."""
+        try:
+            data = self._viacep().fetch(cep)
+        except IntegrationNotFoundError as exc:
+            raise LogisticsError(str(exc.message)) from exc
+        except IntegrationValidationError as exc:
+            raise LogisticsError(str(exc.message)) from exc
+        except IntegrationHttpError as exc:
+            raise LogisticsError(
+                "Nao foi possivel consultar o CEP no ViaCEP. Tente novamente."
+            ) from exc
+        return AddressLookupSchema.from_address_data(data)
 
     @staticmethod
     def _assert_period(data_inicio, data_fim) -> None:
