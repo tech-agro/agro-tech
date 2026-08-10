@@ -9,6 +9,7 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 
 import streamlit as st
 
+from components.dashboard.home import render_dashboard
 from components.shared.logo.svg import LOGO_MEANING_MARKDOWN
 from components.shared.logo.widgets import apply_sidebar_logo, render_logo
 from services.identity_client import (
@@ -19,7 +20,6 @@ from services.identity_client import (
 )
 
 st.set_page_config(page_title="Agro Tech", layout="wide")
-apply_sidebar_logo()
 
 query_params = st.query_params
 if "token" in query_params:
@@ -34,34 +34,66 @@ if login_error:
 
 usuario = current_user()
 
-render_logo(width=420, animated=True, height=380)
 
-st.markdown(
-    """
-    <div style="text-align:center; margin-top:0.15rem;">
-      <h1 style="margin-bottom:0.3rem; letter-spacing:0.04em; font-weight:600;">Agro Tech</h1>
-      <p style="opacity:0.75; margin:0 auto; max-width:28rem; font-size:1.05rem;">
-        Integracao que multiplica resultado.
-      </p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+def _inicio() -> None:
+    apply_sidebar_logo()
+    render_logo(width=420, animated=True, height=380)
 
-_left, mid, _right = st.columns([4, 2, 4])
-with mid:
-    with st.popover("Sobre a logo", use_container_width=True):
-        st.markdown(LOGO_MEANING_MARKDOWN)
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:0.15rem;">
+          <h1 style="margin-bottom:0.3rem; letter-spacing:0.04em; font-weight:600;">Agro Tech</h1>
+          <p style="opacity:0.75; margin:0 auto; max-width:28rem; font-size:1.05rem;">
+            Integracao que multiplica resultado.
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.divider()
+    _left, mid, _right = st.columns([4, 2, 4])
+    with mid:
+        with st.popover("Sobre a logo", use_container_width=True):
+            st.markdown(LOGO_MEANING_MARKDOWN)
 
-if usuario is None:
-    st.write("Faca login para acessar os modulos.")
-    st.link_button("Entrar com Google", get_authorization_url())
-else:
-    st.write(f"Bem-vindo(a), {usuario.nome}.")
-    st.write(f"Perfis: {', '.join(usuario.perfis) or 'nenhum'}")
-    st.caption("Use o menu lateral para navegar entre os modulos.")
-    if st.button("Sair"):
-        logout()
-        st.rerun()
+    st.divider()
+
+    if usuario is None:
+        st.write("Faca login para acessar os modulos.")
+        st.link_button("Entrar com Google", get_authorization_url())
+        return
+
+    col_bemvindo, col_sair = st.columns([5, 1])
+    with col_bemvindo:
+        st.write(f"Bem-vindo(a), {usuario.nome}.")
+        st.caption(f"Perfis: {', '.join(usuario.perfis) or 'nenhum'}")
+    with col_sair:
+        if st.button("Sair"):
+            logout()
+            st.rerun()
+
+    st.divider()
+    render_dashboard()
+
+
+pages = {
+    "": [st.Page(_inicio, title="Inicio", icon="🏠", default=True)],
+    "Operacao": [
+        st.Page("pages/Producao.py", title="Producao", icon="🌱"),
+        st.Page("pages/Estoque.py", title="Estoque", icon="📦"),
+        st.Page("pages/Manutencao.py", title="Manutencao", icon="🔧"),
+        st.Page("pages/Logistica.py", title="Logistica", icon="🚚"),
+        st.Page("pages/Fitossanidade.py", title="Fitossanidade", icon="🌿"),
+    ],
+    "Comercial & Financeiro": [
+        st.Page("pages/Comercial.py", title="Comercial", icon="🤝"),
+        st.Page("pages/Compras.py", title="Compras", icon="🛒"),
+        st.Page("pages/Financeiro.py", title="Financeiro", icon="💰"),
+    ],
+    "Inteligencia": [
+        st.Page("pages/Inteligencia.py", title="Inteligencia", icon="📊"),
+    ],
+}
+
+pg = st.navigation(pages)
+pg.run()

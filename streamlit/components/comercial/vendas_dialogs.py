@@ -9,12 +9,14 @@ import streamlit as st
 from app.comercial.models import ItemVendaEntrada, NovaVenda
 from components.comercial.dialog_state import clear_dialog_state, get_dialog
 from components.comercial.formatters import centro_custo_label, cliente_label, lote_label, produto_label
-from components.comercial.vendas_tables import itens_venda_df
+from components.comercial.vendas_tables import STATUS_RECEBIMENTO, itens_venda_df
 from services.comercial_client import ComercialApiError, ComercialClient
 from services.estoque_client import EstoqueApiError, EstoqueClient
+from services.financeiro_client import FinanceiroApiError, FinanceiroClient
 
 client = ComercialClient()
 estoque_client = EstoqueClient()
+financeiro_client = FinanceiroClient()
 
 _ITENS_KEY = "nova_venda_itens"
 
@@ -175,10 +177,25 @@ def _view_dialog(scope: str, id_venda: int) -> None:
             st.rerun()
         return
 
-    st.text_input("Valor total", f"R$ {venda.valor_total:.2f}", disabled=True)
-    st.text_input(
-        "Data da venda", venda.data_venda.strftime("%d/%m/%Y") if venda.data_venda else "-", disabled=True
+    col_valor, col_data, col_status = st.columns(3)
+    col_valor.metric("Valor total", f"R$ {venda.valor_total:.2f}")
+    col_data.metric(
+        "Data da venda", venda.data_venda.strftime("%d/%m/%Y") if venda.data_venda else "-"
     )
+    try:
+        contas = financeiro_client.list_contas_receber(limit=500)
+        conta = next((c for c in contas if c.id_venda == id_venda), None)
+    except FinanceiroApiError:
+        conta = None
+    if conta is not None:
+        col_status.metric(
+            "Recebimento", STATUS_RECEBIMENTO.get(conta.status, conta.status)
+        )
+        if conta.saldo:
+            st.caption(f"Saldo a receber: R$ {float(conta.saldo):.2f} · vencimento {conta.vencimento}")
+    else:
+        col_status.metric("Recebimento", "—")
+
     try:
         produto_por_id = {p.id_produto: produto_label(p) for p in client.list_produto_options()}
     except ComercialApiError:

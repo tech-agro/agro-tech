@@ -24,6 +24,7 @@ from components.estoque.estoques_tables import estoques_df
 from components.estoque.formatters import estoque_label
 from components.estoque.locais_tables import locais_df
 from components.estoque.lotes_tables import lotes_df
+from components.estoque.ocupacao import localizacao_lotes_df, render_ocupacao_locais
 from components.estoque.certificacoes_tables import certificacoes_df
 from components.estoque.saldos_tables import saldos_df
 from components.estoque.movimentacoes_tables import movimentacoes_df
@@ -47,19 +48,53 @@ def _client() -> EstoqueClient:
     return EstoqueClient()
 
 
-tab_saldo, tab_entradas, tab_mov, tab_estoques, tab_locais, tab_lotes, tab_certificacoes = (
-    st.tabs(
-        [
-            "Saldo",
-            "Entradas",
-            "Movimentações",
-            "Estoques",
-            "Locais",
-            "Lotes",
-            "Certificações",
-        ]
-    )
+(
+    tab_visao_geral,
+    tab_saldo,
+    tab_entradas,
+    tab_mov,
+    tab_estoques,
+    tab_locais,
+    tab_lotes,
+    tab_certificacoes,
+) = st.tabs(
+    [
+        "Visão geral",
+        "Saldo",
+        "Entradas",
+        "Movimentações",
+        "Estoques",
+        "Locais",
+        "Lotes",
+        "Certificações",
+    ]
 )
+
+
+# ----------------------------------------------------------------------
+# Visao geral: ocupacao por local (vs capacidade) e onde cada lote esta
+# ----------------------------------------------------------------------
+with tab_visao_geral:
+    try:
+        ocupacoes = _client().list_ocupacao_locais()
+        localizacoes = _client().list_localizacao_lotes()
+    except EstoqueApiError as exc:
+        toast_error(exc)
+        st.stop()
+
+    st.markdown("**Ocupação por local**")
+    render_ocupacao_locais(ocupacoes)
+
+    st.divider()
+    st.markdown("**Onde está cada lote**")
+    query = st.text_input(
+        "Filtrar",
+        placeholder="Filtrar por lote, produto, local...",
+        label_visibility="collapsed",
+        key="localizacao_filter",
+    )
+    df_localizacao = filter_dataframe(localizacao_lotes_df(localizacoes), query)
+    data_table(df_localizacao, key="localizacao_grid")
 
 
 # ----------------------------------------------------------------------

@@ -27,6 +27,7 @@ from components.shared.screens import (
     toast_error,
 )
 from services.comercial_client import ComercialApiError, ComercialClient
+from services.financeiro_client import FinanceiroApiError, FinanceiroClient
 from services.identity_client import require_login
 
 require_login()
@@ -36,6 +37,10 @@ setup_page("Comercial", "Vendas, clientes, produtos e catálogo comercial.")
 
 def _client() -> ComercialClient:
     return ComercialClient()
+
+
+def _financeiro_client() -> FinanceiroClient:
+    return FinanceiroClient()
 
 
 tab_vendas, tab_clientes, tab_produtos, tab_catalogo = st.tabs(
@@ -56,11 +61,30 @@ with tab_vendas:
 
     cliente_por_id = {c.id_cliente: cliente_label(c) for c in clientes_opt}
 
+    try:
+        contas_receber = _financeiro_client().list_contas_receber(limit=500)
+        conta_por_venda = {c.id_venda: c for c in contas_receber if c.id_venda is not None}
+    except FinanceiroApiError:
+        conta_por_venda = {}
+        st.caption("⚠ Nao foi possivel carregar o status de recebimento do Financeiro agora.")
+
+    if vendas:
+        total_valor = sum(float(v.valor_total) for v in vendas)
+        total_a_receber = sum(
+            float(c.saldo) for c in conta_por_venda.values() if c.saldo
+        )
+        vencidas = sum(1 for c in conta_por_venda.values() if c.status == "VENCIDA")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Vendas", len(vendas))
+        c2.metric("Total vendido", f"R$ {total_valor:,.2f}")
+        c3.metric("A receber (com vencidas)", f"R$ {total_a_receber:,.2f}", delta=f"{vencidas} vencida(s)" if vencidas else None, delta_color="inverse")
+        st.divider()
+
     query, new_clicked = crud_toolbar(key="vendas", filter_placeholder="Filtrar vendas...", new_label="Nova venda")
     if new_clicked:
         open_dialog("vendas", "create")
 
-    df = filter_dataframe(vendas_df(vendas, cliente_por_id), query)
+    df = filter_dataframe(vendas_df(vendas, cliente_por_id, conta_por_venda), query)
     selected = data_table(df, key="vendas_grid")
     action = row_actions(key="vendas", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False)
 

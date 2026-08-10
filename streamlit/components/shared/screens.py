@@ -28,7 +28,6 @@ from components.shared.logo.widgets import apply_sidebar_logo
 
 
 def setup_page(title: str, caption: str | None = None) -> None:
-    st.set_page_config(page_title=f"{title} | Agro Tech", layout="wide")
     apply_sidebar_logo()
     st.title(title)
     if caption:

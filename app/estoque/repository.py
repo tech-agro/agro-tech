@@ -101,6 +101,30 @@ class LoteRepository(BaseRepository[LoteModel]):
 class LocalArmazenamentoRepository(BaseRepository[LocalArmazenamentoModel]):
     model = LocalArmazenamentoModel
 
+    def list_ocupacao(self) -> list[tuple[LocalArmazenamentoModel, Decimal]]:
+        """Ocupacao total (soma dos saldos de estoque) por local, para comparar com a capacidade."""
+        with get_session() as session:
+            rows = session.execute(
+                select(
+                    LocalArmazenamentoModel,
+                    func.coalesce(func.sum(SaldoEstoqueModel.quantidade_atual), 0),
+                )
+                .select_from(LocalArmazenamentoModel)
+                .outerjoin(
+                    EstoqueModel, EstoqueModel.id_local == LocalArmazenamentoModel.id_local
+                )
+                .outerjoin(
+                    SaldoEstoqueModel, SaldoEstoqueModel.id_estoque == EstoqueModel.id_estoque
+                )
+                .group_by(LocalArmazenamentoModel.id_local)
+                .order_by(LocalArmazenamentoModel.descricao)
+            ).all()
+            result: list[tuple[LocalArmazenamentoModel, Decimal]] = []
+            for local, ocupado in rows:
+                session.expunge(local)
+                result.append((local, Decimal(str(ocupado))))
+            return result
+
 
 class EstoqueRepository(BaseRepository[EstoqueModel]):
     model = EstoqueModel
@@ -333,6 +357,33 @@ class SaldoLoteRepository(BaseRepository[SaldoLoteModel]):
             for saldo, codigo, nome in rows:
                 session.expunge(saldo)
                 result.append((saldo, codigo, nome))
+            return result
+
+    def list_localizacoes(self) -> list[tuple[SaldoLoteModel, str, str | None, str]]:
+        """Onde cada lote com saldo positivo esta guardado (lote -> estoque -> local)."""
+        with get_session() as session:
+            rows = session.execute(
+                select(
+                    SaldoLoteModel,
+                    LoteModel.codigo_lote,
+                    ProdutoRef.nome,
+                    LocalArmazenamentoModel.descricao,
+                )
+                .select_from(SaldoLoteModel)
+                .join(LoteModel, LoteModel.id_lote == SaldoLoteModel.id_lote)
+                .outerjoin(ProdutoRef, ProdutoRef.id_produto == LoteModel.id_produto)
+                .join(EstoqueModel, EstoqueModel.id_estoque == SaldoLoteModel.id_estoque)
+                .join(
+                    LocalArmazenamentoModel,
+                    LocalArmazenamentoModel.id_local == EstoqueModel.id_local,
+                )
+                .where(SaldoLoteModel.quantidade_atual > 0)
+                .order_by(LocalArmazenamentoModel.descricao, LoteModel.codigo_lote)
+            ).all()
+            result: list[tuple[SaldoLoteModel, str, str | None, str]] = []
+            for saldo, codigo, produto_nome, local_descricao in rows:
+                session.expunge(saldo)
+                result.append((saldo, codigo, produto_nome, local_descricao))
             return result
 
 

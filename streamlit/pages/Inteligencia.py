@@ -11,15 +11,18 @@ _STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
 if str(_STREAMLIT_ROOT) not in sys.path:
     sys.path.insert(0, str(_STREAMLIT_ROOT))
 
+import pandas as pd
 import streamlit as st
 
 from app.inteligencia.schemas import (
+    ClimaSyncRequestSchema,
     IndicadorCreateSchema,
     IndicadorUpdateSchema,
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorUpdateSchema,
 )
-from components.shared.screens import setup_page, toast_error, toast_ok
+from components.shared import clima
+from components.shared.screens import data_table, setup_page, toast_error, toast_ok
 from services import producao_client as producao_api
 from services.identity_client import require_login
 from services.inteligencia_client import InteligenciaApiError, InteligenciaClient
@@ -59,10 +62,9 @@ def _render_indicadores() -> None:
         indicadores = []
 
     if indicadores:
-        st.dataframe(
-            [i.model_dump() for i in indicadores],
-            use_container_width=True,
-            hide_index=True,
+        data_table(
+            pd.DataFrame([i.model_dump() for i in indicadores]),
+            key="indicadores",
         )
     else:
         st.info("Nenhum indicador encontrado.")
@@ -183,10 +185,9 @@ def _render_medicoes() -> None:
         medicoes = []
 
     if medicoes:
-        st.dataframe(
-            [m.model_dump() for m in medicoes],
-            use_container_width=True,
-            hide_index=True,
+        data_table(
+            pd.DataFrame([m.model_dump() for m in medicoes]),
+            key="medicoes",
         )
     else:
         st.info("Nenhuma medicao encontrada.")
@@ -334,19 +335,72 @@ def _fmt_decimal(valor: Decimal | None) -> str:
     return f"{valor:.2f}"
 
 
+def _render_clima_tab() -> None:
+    """Fonte principal de dados: API Open-Meteo. Ve-se e sincroniza-se aqui."""
+    st.caption(
+        "Dados vindos de API externa (Open-Meteo). Outras fontes serao "
+        "conectadas aqui no futuro."
+    )
+    latitude, longitude = clima.render_localizacao(key_prefix="inteligencia_clima")
+    clima.render_clima_atual(latitude=latitude, longitude=longitude)
+
+    try:
+        safras = _listar_safras()
+    except Exception:
+        safras = []
+    mapa_safra = {"Nenhuma": None}
+    mapa_safra.update({_label_safra(s): s["id_safra"] for s in safras})
+
+    col_safra, col_botao = st.columns([3, 1])
+    with col_safra:
+        safra_escolha = st.selectbox(
+            "Associar a safra (opcional)", list(mapa_safra.keys()), key="clima_safra"
+        )
+    with col_botao:
+        st.write("")
+        sincronizar = st.button("Sincronizar", type="primary", use_container_width=True)
+
+    if sincronizar:
+        try:
+            resultado = _client().sync_clima(
+                ClimaSyncRequestSchema(
+                    latitude=latitude,
+                    longitude=longitude,
+                    id_safra=mapa_safra[safra_escolha],
+                    data_referencia=date.today(),
+                )
+            )
+            toast_ok(f"{len(resultado.ids_medicao)} medicoes de clima registradas.")
+            st.rerun()
+        except InteligenciaApiError as exc:
+            toast_error(exc)
+
+    st.divider()
+    clima.render_clima_trend()
+
+
+def _render_metricas_proprias() -> None:
+    """Secundario: cadastro manual de indicadores/medicoes, fora do foco principal."""
+    st.caption(
+        "Uso avancado: cadastre indicadores e medicoes manuais quando nao houver "
+        "uma API conectada para o dado que voce precisa."
+    )
+    with st.expander("Indicadores"):
+        _render_indicadores()
+    with st.expander("Medicoes manuais"):
+        _render_medicoes()
+    with st.expander("Agregacao"):
+        _render_agregacao()
+
+
 require_login()
 
-setup_page("Inteligencia", "Indicadores, medicoes e agregacao basica de KPIs.")
+setup_page("Inteligencia", "Indicadores vindos de APIs conectadas, com espaco para metricas proprias.")
 
-tab_indicadores, tab_medicoes, tab_agregacao = st.tabs(
-    ["Indicadores", "Medicoes", "Agregacao"]
-)
+tab_clima, tab_proprias = st.tabs(["Clima", "Metricas proprias"])
 
-with tab_indicadores:
-    _render_indicadores()
+with tab_clima:
+    _render_clima_tab()
 
-with tab_medicoes:
-    _render_medicoes()
-
-with tab_agregacao:
-    _render_agregacao()
+with tab_proprias:
+    _render_metricas_proprias()

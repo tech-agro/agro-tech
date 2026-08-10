@@ -11,6 +11,8 @@ import streamlit as st
 
 from app.core.config import settings
 from app.inteligencia.schemas import (
+    ClimaSyncRequestSchema,
+    ClimaSyncResponseSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -19,6 +21,7 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
 )
+from app.integrations.schemas import WeatherData
 from services.identity_client import SESSION_KEY_TOKEN
 
 
@@ -217,3 +220,23 @@ class InteligenciaClient:
     def delete_medicao(self, id_medicao: int) -> None:
         response = self._request("DELETE", f"/inteligencia/medicoes/{id_medicao}")
         self._raise_for_api(response)
+
+    # --- Clima (Open-Meteo) ---
+
+    def get_clima_atual(self, *, latitude: float, longitude: float) -> WeatherData:
+        response = self._request(
+            "GET",
+            "/inteligencia/indicadores/clima/atual",
+            params={"latitude": latitude, "longitude": longitude},
+        )
+        self._raise_for_api(response)
+        return WeatherData.model_validate(response.json())
+
+    def sync_clima(self, payload: ClimaSyncRequestSchema) -> ClimaSyncResponseSchema:
+        response = self._request(
+            "POST",
+            "/inteligencia/indicadores/clima/sync",
+            json=payload.model_dump(mode="json"),
+        )
+        self._raise_for_api(response)
+        return ClimaSyncResponseSchema.model_validate(response.json())

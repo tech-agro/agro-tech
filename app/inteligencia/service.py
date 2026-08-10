@@ -13,6 +13,8 @@ from app.inteligencia.errors import (
     InteligenciaNotFoundError,
     InteligenciaValidationError,
 )
+from app.integrations.open_meteo import OpenMeteoClient
+from app.integrations.schemas import WeatherData
 from app.inteligencia.repository import (
     IndicadorFilters,
     IndicadorRepository,
@@ -275,4 +277,72 @@ class InteligenciaService:
                 },
             ).first()
             return int(med[0]) if med is not None else None
+
+    def consultar_clima_atual(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        client: OpenMeteoClient | None = None,
+    ) -> WeatherData:
+        """Leitura ao vivo do clima (sem persistir), para widgets de dashboard."""
+        return (client or OpenMeteoClient()).fetch(latitude, longitude)
+
+    def register_weather_measurement(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        id_safra: int | None = None,
+        data_referencia: date | None = None,
+        client: OpenMeteoClient | None = None,
+    ) -> list[int]:
+        """Called by Producao/Fitossanidade to record weather indicators (Open-Meteo)."""
+        weather = (client or OpenMeteoClient()).fetch(latitude, longitude)
+        referencia = data_referencia or date.today()
+        metrics = (
+            ("Temperatura", weather.temperature_c, "C"),
+            ("Umidade relativa", weather.humidity_pct, "%"),
+            ("Precipitacao", weather.precipitation_mm, "mm"),
+        )
+
+        ids_medicao: list[int] = []
+        with get_session() as session:
+            for nome, valor, unidade in metrics:
+                if valor is None:
+                    continue
+                row = session.execute(
+                    text("SELECT id_indicador FROM indicador WHERE nome = :nome LIMIT 1"),
+                    {"nome": nome},
+                ).first()
+                if row is None:
+                    row = session.execute(
+                        text(
+                            """
+                            INSERT INTO indicador (nome, unidade)
+                            VALUES (:nome, :unidade)
+                            RETURNING id_indicador
+                            """
+                        ),
+                        {"nome": nome, "unidade": unidade},
+                    ).first()
+                id_indicador = int(row[0])
+                med = session.execute(
+                    text(
+                        """
+                        INSERT INTO medicao_indicador (id_indicador, id_safra, valor, data_referencia)
+                        VALUES (:id_indicador, :id_safra, :valor, :data_referencia)
+                        RETURNING id_medicao
+                        """
+                    ),
+                    {
+                        "id_indicador": id_indicador,
+                        "id_safra": id_safra,
+                        "valor": Decimal(str(valor)),
+                        "data_referencia": referencia,
+                    },
+                ).first()
+                if med is not None:
+                    ids_medicao.append(int(med[0]))
+        return ids_medicao
 

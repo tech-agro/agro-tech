@@ -14,6 +14,8 @@ from app.inteligencia.errors import (
 )
 from app.inteligencia.repository import IndicadorFilters, MedicaoIndicadorFilters
 from app.inteligencia.schemas import (
+    ClimaSyncRequestSchema,
+    ClimaSyncResponseSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -23,6 +25,8 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorUpdateSchema,
 )
 from app.inteligencia.service import InteligenciaService
+from app.integrations.exceptions import IntegrationError
+from app.integrations.schemas import WeatherData
 
 
 class InteligenciaController:
@@ -66,6 +70,14 @@ class InteligenciaController:
             "/indicadores/{id_indicador}/agregacao",
             response_model=IndicadorAgregacaoSchema,
         )(self.agregar_medicoes)
+        self.router.post(
+            "/indicadores/clima/sync",
+            response_model=ClimaSyncResponseSchema,
+        )(self.sync_clima)
+        self.router.get(
+            "/indicadores/clima/atual",
+            response_model=WeatherData,
+        )(self.clima_atual)
 
         self.router.post("/medicoes", response_model=MedicaoIndicadorReadSchema)(
             self.create_medicao
@@ -138,6 +150,24 @@ class InteligenciaController:
             )
         except InteligenciaError as exc:
             raise self._map_error(exc) from exc
+
+    def clima_atual(self, latitude: float, longitude: float) -> WeatherData:
+        try:
+            return self.service.consultar_clima_atual(latitude=latitude, longitude=longitude)
+        except IntegrationError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
+
+    def sync_clima(self, payload: ClimaSyncRequestSchema) -> ClimaSyncResponseSchema:
+        try:
+            ids_medicao = self.service.register_weather_measurement(
+                latitude=payload.latitude,
+                longitude=payload.longitude,
+                id_safra=payload.id_safra,
+                data_referencia=payload.data_referencia,
+            )
+        except IntegrationError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
+        return ClimaSyncResponseSchema(ids_medicao=ids_medicao)
 
     def create_medicao(
         self,
