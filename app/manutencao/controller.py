@@ -17,14 +17,31 @@ from app.manutencao.schemas.maquina import (
 )
 from app.manutencao.schemas.manutencao import ManutencaoCreateSchema, ManutencaoReadSchema
 from app.manutencao.schemas.manutencao_corretiva import (
+    ManutencaoCorretivaDetalheSchema,
     ManutencaoCorretivaReadSchema,
     ManutencaoCorretivaUpdateSchema,
 )
-from app.manutencao.schemas.manutencao_preventiva import ManutencaoPreventivaReadSchema
+from app.manutencao.schemas.manutencao_preventiva import (
+    ManutencaoPreventivaDetalheSchema,
+    ManutencaoPreventivaReadSchema,
+    ManutencaoPreventivaUpdateSchema,
+)
 from app.manutencao.schemas.ordem_servico import (
     OrdemServicoCreateSchema,
+    OrdemServicoDetalheSchema,
     OrdemServicoReadSchema,
     OrdemServicoUpdateSchema,
+)
+from app.manutencao.schemas.plano_manutencao import (
+    PlanoManutencaoCreateSchema,
+    PlanoManutencaoDetalheSchema,
+    PlanoManutencaoReadSchema,
+    PlanoManutencaoUpdateSchema,
+)
+from app.manutencao.schemas.tipo_maquina import (
+    TipoMaquinaCreateSchema,
+    TipoMaquinaReadSchema,
+    TipoMaquinaUpdateSchema,
 )
 from app.manutencao.service import (
     ManutencaoConflictError,
@@ -54,7 +71,7 @@ class ManutencaoCorretivaCreateRequest(ManutencaoCreateSchema):
 
 
 class ConcluirManutencaoRequest(BaseModel):
-    custo: float | None = Field(default=None, ge=0)
+    custo: float = Field(gt=0)
     dt_fim: date | None = None
     proxima_execucao: date | None = None
 
@@ -83,6 +100,32 @@ class ManutencaoController:
 
     def _register_routes(self) -> None:
         self.router.post(
+            "/tipos-maquina",
+            response_model=TipoMaquinaReadSchema,
+            name="create_tipo_maquina",
+        )(self.create_tipo_maquina)
+        self.router.get(
+            "/tipos-maquina",
+            response_model=list[TipoMaquinaReadSchema],
+            name="list_tipos_maquina",
+        )(self.list_tipos_maquina)
+        self.router.get(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=TipoMaquinaReadSchema,
+            name="get_tipo_maquina",
+        )(self.get_tipo_maquina)
+        self.router.put(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=TipoMaquinaReadSchema,
+            name="update_tipo_maquina",
+        )(self.update_tipo_maquina)
+        self.router.delete(
+            "/tipos-maquina/{id_tipo_maquina}",
+            response_model=MessageResponse,
+            name="delete_tipo_maquina",
+        )(self.delete_tipo_maquina)
+
+        self.router.post(
             "/maquinas",
             response_model=MaquinaReadSchema,
             name="create_maquina",
@@ -109,13 +152,39 @@ class ManutencaoController:
         )(self.delete_maquina)
 
         self.router.post(
+            "/planos-manutencao",
+            response_model=PlanoManutencaoDetalheSchema,
+            name="create_plano_manutencao",
+        )(self.create_plano_manutencao)
+        self.router.get(
+            "/planos-manutencao",
+            response_model=list[PlanoManutencaoDetalheSchema],
+            name="list_planos_manutencao",
+        )(self.list_planos_manutencao)
+        self.router.get(
+            "/planos-manutencao/{id_plano}",
+            response_model=PlanoManutencaoReadSchema,
+            name="get_plano_manutencao",
+        )(self.get_plano_manutencao)
+        self.router.put(
+            "/planos-manutencao/{id_plano}",
+            response_model=PlanoManutencaoDetalheSchema,
+            name="update_plano_manutencao",
+        )(self.update_plano_manutencao)
+        self.router.delete(
+            "/planos-manutencao/{id_plano}",
+            response_model=MessageResponse,
+            name="delete_plano_manutencao",
+        )(self.delete_plano_manutencao)
+
+        self.router.post(
             "/ordens-servico",
             response_model=OrdemServicoReadSchema,
             name="create_ordem_servico",
         )(self.create_ordem_servico)
         self.router.get(
             "/ordens-servico",
-            response_model=list[OrdemServicoReadSchema],
+            response_model=list[OrdemServicoDetalheSchema],
             name="list_ordens_servico",
         )(self.list_ordens_servico)
         self.router.get(
@@ -144,11 +213,21 @@ class ManutencaoController:
             response_model=ManutencaoPreventivaResponse,
             name="criar_manutencao_preventiva",
         )(self.criar_manutencao_preventiva)
+        self.router.get(
+            "/manutencoes/preventiva",
+            response_model=list[ManutencaoPreventivaDetalheSchema],
+            name="list_manutencoes_preventivas",
+        )(self.list_manutencoes_preventivas)
         self.router.post(
             "/manutencoes/corretiva",
             response_model=ManutencaoCorretivaResponse,
             name="criar_manutencao_corretiva",
         )(self.criar_manutencao_corretiva)
+        self.router.get(
+            "/manutencoes/corretiva",
+            response_model=list[ManutencaoCorretivaDetalheSchema],
+            name="list_manutencoes_corretivas",
+        )(self.list_manutencoes_corretivas)
         self.router.get(
             "/manutencoes/{id_manutencao}",
             response_model=ManutencaoReadSchema,
@@ -174,6 +253,11 @@ class ManutencaoController:
             response_model=ManutencaoCorretivaReadSchema,
             name="atualizar_manutencao_corretiva",
         )(self.atualizar_manutencao_corretiva)
+        self.router.patch(
+            "/manutencoes/{id_manutencao}/preventiva",
+            response_model=ManutencaoPreventivaReadSchema,
+            name="atualizar_manutencao_preventiva",
+        )(self.atualizar_manutencao_preventiva)
 
     @staticmethod
     def _handle_errors(action: Callable[[], T]) -> T:
@@ -187,6 +271,40 @@ class ManutencaoController:
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
         except ManutencaoError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    def create_tipo_maquina(
+        self,
+        payload: TipoMaquinaCreateSchema,
+    ) -> TipoMaquinaReadSchema:
+        return self._handle_errors(lambda: self.service.create_tipo_maquina(payload))
+
+    def list_tipos_maquina(self) -> list[TipoMaquinaReadSchema]:
+        return self._handle_errors(lambda: self.service.list_tipos_maquina())
+
+    def get_tipo_maquina(self, id_tipo_maquina: int) -> TipoMaquinaReadSchema:
+        return self._handle_errors(
+            lambda: self.service.get_tipo_maquina(id_tipo_maquina)
+        )
+
+    def update_tipo_maquina(
+        self,
+        id_tipo_maquina: int,
+        payload: TipoMaquinaUpdateSchema,
+    ) -> TipoMaquinaReadSchema:
+        return self._handle_errors(
+            lambda: self.service.update_tipo_maquina(id_tipo_maquina, payload)
+        )
+
+    def delete_tipo_maquina(self, id_tipo_maquina: int) -> MessageResponse:
+        deleted = self._handle_errors(
+            lambda: self.service.delete_tipo_maquina(id_tipo_maquina)
+        )
+        if not deleted:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Nao foi possivel excluir o tipo de maquina.",
+            )
+        return MessageResponse(message="Tipo de maquina excluido.")
 
     def create_maquina(self, payload: MaquinaCreateRequest) -> MaquinaReadSchema:
         return self._handle_errors(
@@ -232,6 +350,41 @@ class ManutencaoController:
             )
         return MessageResponse(message="Maquina excluida.")
 
+    def create_plano_manutencao(
+        self,
+        payload: PlanoManutencaoCreateSchema,
+    ) -> PlanoManutencaoDetalheSchema:
+        return self._handle_errors(lambda: self.service.create_plano(payload))
+
+    def list_planos_manutencao(
+        self,
+        id_maquina: int | None = Query(default=None),
+    ) -> list[PlanoManutencaoDetalheSchema]:
+        return self._handle_errors(
+            lambda: self.service.list_planos(id_maquina=id_maquina)
+        )
+
+    def get_plano_manutencao(self, id_plano: int) -> PlanoManutencaoReadSchema:
+        return self._handle_errors(lambda: self.service.get_plano(id_plano))
+
+    def update_plano_manutencao(
+        self,
+        id_plano: int,
+        payload: PlanoManutencaoUpdateSchema,
+    ) -> PlanoManutencaoDetalheSchema:
+        return self._handle_errors(
+            lambda: self.service.update_plano(id_plano, payload)
+        )
+
+    def delete_plano_manutencao(self, id_plano: int) -> MessageResponse:
+        deleted = self._handle_errors(lambda: self.service.delete_plano(id_plano))
+        if not deleted:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Nao foi possivel excluir o plano de manutencao.",
+            )
+        return MessageResponse(message="Plano de manutencao excluido.")
+
     def create_ordem_servico(
         self,
         payload: OrdemServicoCreateSchema,
@@ -243,7 +396,7 @@ class ManutencaoController:
         id_manutencao: int | None = Query(default=None),
         id_maquina: int | None = Query(default=None),
         status: str | None = Query(default=None),
-    ) -> list[OrdemServicoReadSchema]:
+    ) -> list[OrdemServicoDetalheSchema]:
         filters = OrdemServicoFilters(
             id_manutencao=id_manutencao,
             id_maquina=id_maquina,
@@ -325,6 +478,32 @@ class ManutencaoController:
 
         return self._handle_errors(_create)
 
+    def list_manutencoes_preventivas(
+        self,
+        id_maquina: int | None = Query(default=None),
+        id_plano: int | None = Query(default=None),
+        status: str | None = Query(default=None),
+    ) -> list[ManutencaoPreventivaDetalheSchema]:
+        return self._handle_errors(
+            lambda: self.service.list_manutencoes_preventivas(
+                id_maquina=id_maquina,
+                id_plano=id_plano,
+                status=status,
+            )
+        )
+
+    def list_manutencoes_corretivas(
+        self,
+        id_maquina: int | None = Query(default=None),
+        status: str | None = Query(default=None),
+    ) -> list[ManutencaoCorretivaDetalheSchema]:
+        return self._handle_errors(
+            lambda: self.service.list_manutencoes_corretivas(
+                id_maquina=id_maquina,
+                status=status,
+            )
+        )
+
     def get_manutencao(self, id_manutencao: int) -> ManutencaoReadSchema:
         return self._handle_errors(
             lambda: self.service.get_manutencao(id_manutencao)
@@ -338,15 +517,14 @@ class ManutencaoController:
     def concluir_manutencao(
         self,
         id_manutencao: int,
-        payload: ConcluirManutencaoRequest | None = None,
+        payload: ConcluirManutencaoRequest,
     ) -> ManutencaoReadSchema:
-        body = payload or ConcluirManutencaoRequest()
         return self._handle_errors(
             lambda: self.service.concluir_manutencao(
                 id_manutencao,
-                custo=body.custo,
-                dt_fim=body.dt_fim,
-                proxima_execucao=body.proxima_execucao,
+                custo=payload.custo,
+                dt_fim=payload.dt_fim,
+                proxima_execucao=payload.proxima_execucao,
             )
         )
 
@@ -362,6 +540,15 @@ class ManutencaoController:
     ) -> ManutencaoCorretivaReadSchema:
         return self._handle_errors(
             lambda: self.service.atualizar_manutencao_corretiva(id_manutencao, payload)
+        )
+
+    def atualizar_manutencao_preventiva(
+        self,
+        id_manutencao: int,
+        payload: ManutencaoPreventivaUpdateSchema,
+    ) -> ManutencaoPreventivaReadSchema:
+        return self._handle_errors(
+            lambda: self.service.atualizar_manutencao_preventiva(id_manutencao, payload)
         )
 
 

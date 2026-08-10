@@ -20,5 +20,8 @@ class MaquinaReadSchema(BaseModel):
 
     id_maquina: int
     id_tipo_maquina: int
+    id_fazenda: int
     nome: str
     status: str
+    nome_fazenda: str | None = None
+    descricao_tipo: str | None = None

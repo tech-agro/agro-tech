@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+from app.manutencao.schemas.manutencao import ManutencaoReadSchema
 
 
 class ManutencaoCorretivaCreateSchema(BaseModel):
@@ -11,6 +16,8 @@ class ManutencaoCorretivaCreateSchema(BaseModel):
 
 
 class ManutencaoCorretivaUpdateSchema(BaseModel):
+    dt_inicio: date | None = None
+    custo: float | None = Field(default=None, gt=0)
     defeito_relatado: str | None = None
     causa_raiz: str | None = None
     solucao_aplicada: str | None = None
@@ -23,3 +30,9 @@ class ManutencaoCorretivaReadSchema(BaseModel):
     defeito_relatado: str | None
     causa_raiz: str | None
     solucao_aplicada: str | None
+
+
+class ManutencaoCorretivaDetalheSchema(BaseModel):
+    manutencao: ManutencaoReadSchema
+    corretiva: ManutencaoCorretivaReadSchema
+    nome_maquina: str

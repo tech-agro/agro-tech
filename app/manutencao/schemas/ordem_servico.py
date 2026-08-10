@@ -26,3 +26,15 @@ class OrdemServicoReadSchema(BaseModel):
     id_manutencao: int
     descricao: str | None
     status: str
+
+
+class OrdemServicoDetalheSchema(BaseModel):
+    id_ordem_servico: int
+    id_manutencao: int
+    descricao: str | None
+    status: str
+    id_maquina: int
+    nome_maquina: str
+    status_manutencao: str
+    tipo_manutencao: str | None
+    defeito_relatado: str | None = None
