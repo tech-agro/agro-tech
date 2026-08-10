@@ -19,6 +19,7 @@ from app.logistica.schemas.lookups import (
     VehicleOptionSchema,
     VehicleTypeOptionSchema,
 )
+from app.logistica.schemas.address import AddressLookupSchema
 from app.logistica.schemas.location import (
     LocationCreateSchema,
     LocationReadSchema,
@@ -73,6 +74,10 @@ class LogisticsController:
         self.router.get("/lookups/drivers", response_model=list[DriverOptionSchema])(
             self.list_driver_options
         )
+        self.router.get(
+            "/addresses/by-cep/{cep}",
+            response_model=AddressLookupSchema,
+        )(self.lookup_address_by_cep)
 
         self.router.post("/vehicles", response_model=VehicleReadSchema)(
             self.create_vehicle
@@ -197,6 +202,17 @@ class LogisticsController:
 
     def list_driver_options(self) -> list[DriverOptionSchema]:
         return self.service.list_driver_options()
+
+    def lookup_address_by_cep(self, cep: str) -> AddressLookupSchema:
+        try:
+            return self.service.lookup_address_by_cep(cep)
+        except LogisticsError as exc:
+            if "not found" in exc.message.lower():
+                raise HTTPException(
+                    status.HTTP_404_NOT_FOUND,
+                    exc.message,
+                ) from exc
+            raise self._map_error(exc) from exc
 
     # --- Vehicles ---
 

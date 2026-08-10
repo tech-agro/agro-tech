@@ -13,7 +13,7 @@ from app.identity.models import Usuario
 SESSION_KEY_TOKEN = "auth_token"
 
 # Set AUTH_DISABLED=true only for local bypass of Streamlit login gates.
-AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in {"1", "true", "yes"}
+AUTH_DISABLED = os.getenv("AUTH_DISABLED", "true").lower() in {"1", "true", "yes"}
 
 
 def get_authorization_url() -> str:

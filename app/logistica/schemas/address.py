@@ -4,6 +4,30 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.integrations.schemas import AddressData
+
+
+class AddressLookupSchema(BaseModel):
+    """Address fields returned by CEP lookup for form autofill."""
+
+    cep: str
+    logradouro: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+
+    @classmethod
+    def from_address_data(cls, data: AddressData) -> AddressLookupSchema:
+        return cls(
+            cep=data.cep,
+            logradouro=data.logradouro,
+            complemento=data.complemento,
+            bairro=data.bairro,
+            cidade=data.localidade,
+            estado=data.uf,
+        )
+
 
 class AddressCreateSchema(BaseModel):
     logradouro: str = Field(min_length=1, max_length=255)

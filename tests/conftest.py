@@ -64,7 +64,11 @@ def db_engine():
 
 
 @pytest.fixture(autouse=True)
-def clean_identity_data(db_engine) -> Generator[None, None, None]:
+def clean_identity_data(request) -> Generator[None, None, None]:
+    if request.node.get_closest_marker("unit") is not None:
+        yield
+        return
+    db_engine = request.getfixturevalue("db_engine")
     tables = ", ".join(IDENTITY_TABLES)
     with db_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
