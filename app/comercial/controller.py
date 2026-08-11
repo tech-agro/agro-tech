@@ -40,6 +40,7 @@ from app.comercial.models import (
     VendaComItens,
     VendaModel,
 )
+from app.integrations.schemas import CompanyData
 from app.comercial.service import ComercialService
 
 
@@ -158,6 +159,7 @@ class ComercialController:
             self.update_status_cliente
         )
         self.router.delete("/clientes/{id_cliente}")(self.delete_cliente)
+        self.router.get("/cnpj/{cnpj}", response_model=CompanyData)(self.lookup_empresa_por_cnpj)
 
         # --- Venda ---
         self.router.get("/vendas", response_model=list[VendaModel])(self.list_vendas)
@@ -449,6 +451,9 @@ class ComercialController:
         if not self.service.delete_cliente(id_cliente):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente nao encontrado.")
         return {"message": "Cliente removido."}
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        return self._executar(self.service.lookup_empresa_por_cnpj, cnpj)
 
     # ------------------------------------------------------------------
     # Venda

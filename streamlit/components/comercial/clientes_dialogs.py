@@ -35,12 +35,46 @@ def render(scope: str) -> None:
 
 @st.dialog("Novo cliente", width="large")
 def _create_dialog(scope: str) -> None:
-    nome = st.text_input("Nome")
-    documento = st.text_input("Documento (CPF/CNPJ)")
+    state_key = f"_novo_cliente_cnpj_data_{scope}"
+
+    documento = st.text_input("Documento (CPF/CNPJ)", key=f"_novo_cliente_documento_{scope}")
+
+    col_buscar, _ = st.columns([1, 3])
+    with col_buscar:
+        buscar_cnpj = st.button("Buscar CNPJ", use_container_width=True)
+
+    if buscar_cnpj:
+        documento_limpo = "".join(ch for ch in documento if ch.isdigit())
+        if len(documento_limpo) != 14:
+            st.error("Informe um CNPJ valido (14 digitos) para buscar.")
+        else:
+            try:
+                empresa = client.lookup_empresa_por_cnpj(documento_limpo)
+                st.session_state[state_key] = empresa
+                st.toast("Dados da empresa encontrados.")
+            except ComercialApiError as exc:
+                st.session_state.pop(state_key, None)
+                st.error(exc.user_message)
+
+    empresa = st.session_state.get(state_key)
+
+    nome_sugerido = empresa.razao_social if empresa else ""
+    nome = st.text_input("Nome", value=nome_sugerido)
+
+    if empresa:
+        st.caption(
+            f"**{empresa.nome_fantasia or empresa.razao_social}** — "
+            f"{empresa.situacao_cadastral or 'situacao desconhecida'}"
+        )
+        if empresa.logradouro:
+            endereco = f"{empresa.logradouro}, {empresa.numero or 's/n'} — {empresa.bairro or ''}"
+            endereco += f" — {empresa.municipio or ''}/{empresa.uf or ''}"
+            st.caption(endereco)
+
     status = st.selectbox(
         "Status",
         options=list(StatusCliente),
-        format_func=lambda s: STATUS_CLIENTE_LABELS.get(s, s.value),
+        format_func=lambda s: STATUS_CLIENTE_LABELS.get(s, s.value) or "",
     )
 
     col1, col2 = st.columns(2)
@@ -50,6 +84,7 @@ def _create_dialog(scope: str) -> None:
         cancelar = st.button("Cancelar", use_container_width=True)
 
     if cancelar:
+        st.session_state.pop(state_key, None)
         clear_dialog_state(scope)
         st.rerun()
 
@@ -67,6 +102,7 @@ def _create_dialog(scope: str) -> None:
         return
 
     st.toast("Cliente criado com sucesso.")
+    st.session_state.pop(state_key, None)
     clear_dialog_state(scope)
     st.rerun()
 
@@ -110,7 +146,7 @@ def _edit_dialog(scope: str, id_cliente: int) -> None:
         "Status",
         options=list(StatusCliente),
         index=list(StatusCliente).index(cliente.status),
-        format_func=lambda s: STATUS_CLIENTE_LABELS.get(s, s.value),
+        format_func=lambda s: STATUS_CLIENTE_LABELS.get(s, s.value) or "",
     )
 
     col1, col2 = st.columns(2)
