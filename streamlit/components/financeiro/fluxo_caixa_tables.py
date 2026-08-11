@@ -40,22 +40,22 @@ def fluxo_caixa_df(fluxos) -> pd.DataFrame:
                 "Origem": fluxo.origem or "",
                 "Descrição Origem": fluxo.descricao_origem or "",
                 "Conta Pagar": (
-                    fluxo.id_conta_pagar
+                    str(fluxo.id_conta_pagar)
                     if fluxo.id_conta_pagar is not None
                     else ""
                 ),
                 "Conta Receber": (
-                    fluxo.id_conta_receber
+                    str(fluxo.id_conta_receber)
                     if fluxo.id_conta_receber is not None
                     else ""
                 ),
                 "Pagamento": (
-                    fluxo.id_pagamento
+                    str(fluxo.id_pagamento)
                     if fluxo.id_pagamento is not None
                     else ""
                 ),
                 "Recebimento": (
-                    fluxo.id_recebimento
+                    str(fluxo.id_recebimento)
                     if fluxo.id_recebimento is not None
                     else ""
                 ),
