@@ -17,12 +17,24 @@ from app.compras.repository import (
     OrderRepository,
     PurchaseLookupRepository,
     PurchaseRepository,
+    SupplierRepository,
 )
 from app.compras.schemas.lookups import (
     CostCenterOptionSchema,
     ProductOptionSchema,
     SupplierOptionSchema,
 )
+from app.compras.schemas.supplier import (
+    SupplierCreateSchema,
+    SupplierReadSchema,
+    SupplierUpdateSchema,
+)
+from app.integrations.exceptions import (
+    IntegrationHttpError,
+    IntegrationNotFoundError,
+    IntegrationValidationError,
+)
+from app.integrations.schemas import CompanyData
 from app.compras.schemas.order import (
     OrderCreateSchema,
     OrderReadSchema,
@@ -43,6 +55,7 @@ from app.core.database import get_session
 if TYPE_CHECKING:
     from app.estoque.service import EstoqueService
     from app.financeiro.service import FinanceiroService
+    from app.integrations.brasilapi import BrasilApiCnpjClient
 
 _EDITABLE_STATUSES = frozenset({OrderStatus.ABERTO})
 _PURCHASE_ALLOWED_STATUSES = frozenset({OrderStatus.APROVADO})
@@ -57,15 +70,26 @@ class PurchaseService:
         item_repo: OrderItemRepository | None = None,
         purchase_repo: PurchaseRepository | None = None,
         lookup_repo: PurchaseLookupRepository | None = None,
+        supplier_repo: SupplierRepository | None = None,
         inventory_service: EstoqueService | None = None,
         financeiro_service: FinanceiroService | None = None,
+        brasilapi_client: BrasilApiCnpjClient | None = None,
     ) -> None:
         self.order_repo = order_repo or OrderRepository()
         self.item_repo = item_repo or OrderItemRepository()
         self.purchase_repo = purchase_repo or PurchaseRepository()
         self.lookup_repo = lookup_repo or PurchaseLookupRepository()
+        self.supplier_repo = supplier_repo or SupplierRepository()
         self._inventory_service = inventory_service
-        self._financeiro_service = financeiro_service 
+        self._financeiro_service = financeiro_service
+        self._brasilapi_client = brasilapi_client
+
+    def _brasilapi(self) -> BrasilApiCnpjClient:
+        if self._brasilapi_client is None:
+            from app.integrations.brasilapi import BrasilApiCnpjClient
+
+            self._brasilapi_client = BrasilApiCnpjClient()
+        return self._brasilapi_client
 
     def _inventory(self) -> EstoqueService:
         if self._inventory_service is None:
@@ -162,6 +186,91 @@ class PurchaseService:
             CostCenterOptionSchema.model_validate(row)
             for row in self.lookup_repo.list_cost_centers()
         ]
+
+    # --- Suppliers ---
+
+    def list_suppliers(self) -> list[SupplierReadSchema]:
+        return self.supplier_repo.list()
+
+    def get_supplier(self, supplier_id: int) -> SupplierReadSchema | None:
+        return self.supplier_repo.get_by_id(supplier_id)
+
+    def create_supplier(self, payload: SupplierCreateSchema) -> SupplierReadSchema:
+        nome = payload.nome.strip()
+        documento = payload.documento.strip()
+        categoria = payload.categoria.strip() if payload.categoria else None
+        if not nome or not documento:
+            raise PurchaseError("Supplier name and document are required.")
+        if self.supplier_repo.get_by_documento(documento) is not None:
+            raise PurchaseError("A person with this document already exists.")
+        try:
+            return self.supplier_repo.create(
+                nome=nome, documento=documento, categoria=categoria
+            )
+        except IntegrityError as exc:
+            raise PurchaseError(
+                "Could not create supplier. Check that the document is unique."
+            ) from exc
+
+    def update_supplier(
+        self, supplier_id: int, payload: SupplierUpdateSchema
+    ) -> SupplierReadSchema | None:
+        data = payload.model_dump(exclude_unset=True)
+        if not data:
+            return self.supplier_repo.get_by_id(supplier_id)
+
+        nome = data["nome"].strip() if "nome" in data and data["nome"] is not None else None
+        documento = (
+            data["documento"].strip()
+            if "documento" in data and data["documento"] is not None
+            else None
+        )
+        update_categoria = "categoria" in data
+        categoria = None
+        if update_categoria:
+            raw = data.get("categoria")
+            categoria = raw.strip() if isinstance(raw, str) and raw.strip() else None
+
+        if documento is not None:
+            existing = self.supplier_repo.get_by_documento(documento)
+            if existing is not None and existing.id_fornecedor != supplier_id:
+                raise PurchaseError("A person with this document already exists.")
+
+        try:
+            return self.supplier_repo.update(
+                supplier_id,
+                nome=nome,
+                documento=documento,
+                categoria=categoria,
+                update_categoria=update_categoria,
+            )
+        except IntegrityError as exc:
+            raise PurchaseError(
+                "Could not update supplier. Check that the document is unique."
+            ) from exc
+
+    def delete_supplier(self, supplier_id: int) -> bool:
+        if self.supplier_repo.get_by_id(supplier_id) is None:
+            return False
+        try:
+            return self.supplier_repo.delete(supplier_id)
+        except IntegrityError as exc:
+            raise PurchaseError(
+                "Could not delete supplier: there are linked records."
+            ) from exc
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        """Fetch company data from BrasilAPI for supplier form autofill."""
+        try:
+            return self._brasilapi().fetch(cnpj)
+        except IntegrationNotFoundError as exc:
+            raise PurchaseError(str(exc.message)) from exc
+        except IntegrationValidationError as exc:
+            raise PurchaseError(str(exc.message)) from exc
+        except IntegrationHttpError as exc:
+            raise PurchaseError(
+                "Could not query CNPJ on BrasilAPI. Try again."
+            ) from exc
 
     # --- Orders ---
 

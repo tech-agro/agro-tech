@@ -15,11 +15,24 @@ from app.compras.models.refs import (
     UnidadeMedidaRef,
 )
 from app.compras.models.supplier_product import SupplierProductModel
+from app.compras.schemas.supplier import SupplierReadSchema
 from app.core.base_repository import BaseRepository
 from app.core.database import get_session
 
 # Register FK targets on SQLAlchemy metadata (shared tables owned elsewhere).
 _ = (PessoaRef, FornecedorRef, UnidadeMedidaRef, ProdutoRef, CentroCustoRef)
+
+
+def _supplier_read(
+    fornecedor: FornecedorRef, pessoa: PessoaRef
+) -> SupplierReadSchema:
+    return SupplierReadSchema(
+        id_fornecedor=fornecedor.id_fornecedor,
+        id_pessoa=pessoa.id_pessoa,
+        nome=pessoa.nome,
+        documento=pessoa.documento,
+        categoria=fornecedor.categoria,
+    )
 
 
 class OrderRepository(BaseRepository[OrderModel]):
@@ -107,6 +120,90 @@ class SupplierProductRepository(BaseRepository[SupplierProductModel]):
 
 class PurchaseRepository(BaseRepository[PurchaseModel]):
     model = PurchaseModel
+
+
+class SupplierRepository:
+    """CRUD for fornecedor + pessoa (person row created with the supplier)."""
+
+    def create(
+        self, *, nome: str, documento: str, categoria: str | None
+    ) -> SupplierReadSchema:
+        with get_session() as session:
+            pessoa = PessoaRef(nome=nome, documento=documento)
+            session.add(pessoa)
+            session.flush()
+            fornecedor = FornecedorRef(id_pessoa=pessoa.id_pessoa, categoria=categoria)
+            session.add(fornecedor)
+            session.flush()
+            return _supplier_read(fornecedor, pessoa)
+
+    def list(self) -> list[SupplierReadSchema]:
+        with get_session() as session:
+            rows = session.execute(
+                select(FornecedorRef, PessoaRef)
+                .join(PessoaRef, PessoaRef.id_pessoa == FornecedorRef.id_pessoa)
+                .order_by(PessoaRef.nome)
+            ).all()
+            return [_supplier_read(fornecedor, pessoa) for fornecedor, pessoa in rows]
+
+    def get_by_id(self, supplier_id: int) -> SupplierReadSchema | None:
+        with get_session() as session:
+            row = session.execute(
+                select(FornecedorRef, PessoaRef)
+                .join(PessoaRef, PessoaRef.id_pessoa == FornecedorRef.id_pessoa)
+                .where(FornecedorRef.id_fornecedor == supplier_id)
+            ).first()
+            if row is None:
+                return None
+            fornecedor, pessoa = row
+            return _supplier_read(fornecedor, pessoa)
+
+    def get_by_documento(self, documento: str) -> SupplierReadSchema | None:
+        with get_session() as session:
+            row = session.execute(
+                select(FornecedorRef, PessoaRef)
+                .join(PessoaRef, PessoaRef.id_pessoa == FornecedorRef.id_pessoa)
+                .where(PessoaRef.documento == documento)
+            ).first()
+            if row is None:
+                return None
+            fornecedor, pessoa = row
+            return _supplier_read(fornecedor, pessoa)
+
+    def update(
+        self,
+        supplier_id: int,
+        *,
+        nome: str | None = None,
+        documento: str | None = None,
+        categoria: str | None = None,
+        update_categoria: bool = False,
+    ) -> SupplierReadSchema | None:
+        with get_session() as session:
+            row = session.execute(
+                select(FornecedorRef, PessoaRef)
+                .join(PessoaRef, PessoaRef.id_pessoa == FornecedorRef.id_pessoa)
+                .where(FornecedorRef.id_fornecedor == supplier_id)
+            ).first()
+            if row is None:
+                return None
+            fornecedor, pessoa = row
+            if nome is not None:
+                pessoa.nome = nome
+            if documento is not None:
+                pessoa.documento = documento
+            if update_categoria:
+                fornecedor.categoria = categoria
+            session.flush()
+            return _supplier_read(fornecedor, pessoa)
+
+    def delete(self, supplier_id: int) -> bool:
+        with get_session() as session:
+            fornecedor = session.get(FornecedorRef, supplier_id)
+            if fornecedor is None:
+                return False
+            session.delete(fornecedor)
+            return True
 
 
 class PurchaseLookupRepository:

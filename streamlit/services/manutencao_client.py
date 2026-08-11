@@ -70,6 +70,50 @@ def delete_tipo_maquina(id_tipo_maquina: int) -> None:
         raise RuntimeError(_extract_error(resposta))
 
 
+def list_prestadores() -> list[dict[str, Any]]:
+    resposta = _request("GET", "/manutencao/prestadores")
+    resposta.raise_for_status()
+    return resposta.json()
+
+
+def create_prestador(payload: dict[str, Any]) -> dict[str, Any]:
+    resposta = _request("POST", "/manutencao/prestadores", json=payload)
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def get_prestador(id_prestador: int) -> dict[str, Any]:
+    resposta = _request("GET", f"/manutencao/prestadores/{id_prestador}")
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def update_prestador(id_prestador: int, payload: dict[str, Any]) -> dict[str, Any]:
+    resposta = _request(
+        "PUT",
+        f"/manutencao/prestadores/{id_prestador}",
+        json=payload,
+    )
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
+def delete_prestador(id_prestador: int) -> None:
+    resposta = _request("DELETE", f"/manutencao/prestadores/{id_prestador}")
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+
+
+def lookup_empresa_por_cnpj(cnpj: str) -> dict[str, Any]:
+    resposta = _request("GET", f"/manutencao/cnpj/{cnpj}")
+    if not resposta.ok:
+        raise RuntimeError(_extract_error(resposta))
+    return resposta.json()
+
+
 def list_maquinas(
     *,
     id_tipo_maquina: int | None = None,

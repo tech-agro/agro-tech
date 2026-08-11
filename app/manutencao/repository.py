@@ -41,6 +41,11 @@ from app.manutencao.schemas.plano_manutencao import (
     PlanoManutencaoReadSchema,
     PlanoManutencaoUpdateSchema,
 )
+from app.manutencao.schemas.prestador_servico import (
+    PrestadorServicoCreateSchema,
+    PrestadorServicoReadSchema,
+    PrestadorServicoUpdateSchema,
+)
 from app.manutencao.schemas.tipo_maquina import (
     TipoMaquinaCreateSchema,
     TipoMaquinaReadSchema,
@@ -203,6 +208,160 @@ class ManutencaoRepository:
                 exc,
             )
             return False
+
+    # ------------------------------------------------------------------
+    # Prestador de servico
+    # ------------------------------------------------------------------
+
+    def create_prestador(
+        self,
+        payload: PrestadorServicoCreateSchema,
+    ) -> PrestadorServicoReadSchema | None:
+        sql = text(
+            """
+            insert into prestador_servico (nome, cnpj, especialidade, telefone)
+            values (:nome, :cnpj, :especialidade, :telefone)
+            returning id_prestador, nome, cnpj, especialidade, telefone
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql,
+                    {
+                        "nome": payload.nome.strip(),
+                        "cnpj": payload.cnpj.strip(),
+                        "especialidade": payload.especialidade.strip(),
+                        "telefone": payload.telefone.strip(),
+                    },
+                ).one()
+            return self._row_to_prestador(row)
+        except Exception as exc:
+            self.logger.error("Erro ao criar prestador: %s", exc)
+            return None
+
+    def list_prestadores(self) -> list[PrestadorServicoReadSchema]:
+        sql = text(
+            """
+            select id_prestador, nome, cnpj, especialidade, telefone
+            from prestador_servico
+            order by nome
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                rows = conn.execute(sql).fetchall()
+            return [self._row_to_prestador(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("Erro ao listar prestadores: %s", exc)
+            return []
+
+    def get_prestador_by_id(
+        self, id_prestador: int
+    ) -> PrestadorServicoReadSchema | None:
+        sql = text(
+            """
+            select id_prestador, nome, cnpj, especialidade, telefone
+            from prestador_servico
+            where id_prestador = :id_prestador
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(
+                    sql, {"id_prestador": id_prestador}
+                ).fetchone()
+            return self._row_to_prestador(row) if row else None
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao buscar prestador %s: %s", id_prestador, exc
+            )
+            return None
+
+    def get_prestador_by_cnpj(
+        self, cnpj: str
+    ) -> PrestadorServicoReadSchema | None:
+        sql = text(
+            """
+            select id_prestador, nome, cnpj, especialidade, telefone
+            from prestador_servico
+            where regexp_replace(cnpj, '\\D', '', 'g') = :cnpj
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(sql, {"cnpj": cnpj}).fetchone()
+            return self._row_to_prestador(row) if row else None
+        except Exception as exc:
+            self.logger.error("Erro ao buscar prestador por CNPJ: %s", exc)
+            return None
+
+    def update_prestador(
+        self,
+        id_prestador: int,
+        payload: PrestadorServicoUpdateSchema,
+    ) -> PrestadorServicoReadSchema | None:
+        data = payload.model_dump(exclude_unset=True)
+        if not data:
+            return self.get_prestador_by_id(id_prestador)
+        for key, value in list(data.items()):
+            if isinstance(value, str):
+                data[key] = value.strip()
+        sets = ", ".join(f"{col} = :{col}" for col in data)
+        sql = text(
+            f"""
+            update prestador_servico
+            set {sets}
+            where id_prestador = :id_prestador
+            returning id_prestador, nome, cnpj, especialidade, telefone
+            """
+        )
+        params = {"id_prestador": id_prestador, **data}
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                row = conn.execute(sql, params).fetchone()
+            return self._row_to_prestador(row) if row else None
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao atualizar prestador %s: %s", id_prestador, exc
+            )
+            return None
+
+    def delete_prestador(self, id_prestador: int) -> bool:
+        sql = text(
+            "delete from prestador_servico where id_prestador = :id_prestador"
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                result = conn.execute(sql, {"id_prestador": id_prestador})
+            return result.rowcount > 0
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao excluir prestador %s: %s", id_prestador, exc
+            )
+            return False
+
+    def count_manutencoes_by_prestador(self, id_prestador: int) -> int:
+        sql = text(
+            """
+            select count(*)::int as total
+            from manutencao
+            where id_prestador = :id_prestador
+            """
+        )
+        try:
+            with self.pg_connector.pool.begin() as conn:
+                total = conn.execute(
+                    sql, {"id_prestador": id_prestador}
+                ).scalar_one()
+            return int(total)
+        except Exception as exc:
+            self.logger.error(
+                "Erro ao contar manutencoes do prestador %s: %s",
+                id_prestador,
+                exc,
+            )
+            return 0
 
     def count_maquinas_by_tipo(self, id_tipo_maquina: int) -> int:
         sql = text(
@@ -1344,6 +1503,16 @@ class ManutencaoRepository:
         return TipoMaquinaReadSchema(
             id_tipo_maquina=row.id_tipo_maquina,
             descricao=row.descricao,
+        )
+
+    @staticmethod
+    def _row_to_prestador(row) -> PrestadorServicoReadSchema:
+        return PrestadorServicoReadSchema(
+            id_prestador=row.id_prestador,
+            nome=row.nome,
+            cnpj=row.cnpj,
+            especialidade=row.especialidade,
+            telefone=row.telefone,
         )
 
     @staticmethod

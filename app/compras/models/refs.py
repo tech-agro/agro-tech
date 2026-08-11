@@ -19,6 +19,7 @@ class PessoaRef(Base):
 
     id_pessoa: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    documento: Mapped[str] = mapped_column(String(50), nullable=False)
 
 
 class FornecedorRef(Base):

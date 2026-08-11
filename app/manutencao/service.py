@@ -13,6 +13,7 @@ from app.core.database import pg_connector
 
 if TYPE_CHECKING:
     from app.financeiro.service import FinanceiroService
+    from app.integrations.brasilapi import BrasilApiCnpjClient
 from app.manutencao.repository import (
     ManutencaoCorretivaFilters,
     ManutencaoPreventivaFilters,
@@ -53,11 +54,22 @@ from app.manutencao.schemas.plano_manutencao import (
     PlanoManutencaoReadSchema,
     PlanoManutencaoUpdateSchema,
 )
+from app.manutencao.schemas.prestador_servico import (
+    PrestadorServicoCreateSchema,
+    PrestadorServicoReadSchema,
+    PrestadorServicoUpdateSchema,
+)
 from app.manutencao.schemas.tipo_maquina import (
     TipoMaquinaCreateSchema,
     TipoMaquinaReadSchema,
     TipoMaquinaUpdateSchema,
 )
+from app.integrations.exceptions import (
+    IntegrationHttpError,
+    IntegrationNotFoundError,
+    IntegrationValidationError,
+)
+from app.integrations.schemas import CompanyData
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +123,18 @@ class ManutencaoService:
         self,
         repository: ManutencaoRepository | None = None,
         financeiro_service: FinanceiroService | None = None,
+        brasilapi_client: BrasilApiCnpjClient | None = None,
     ) -> None:
         self.repository = repository or ManutencaoRepository(pg_connector, logger)
         self._financeiro_service = financeiro_service
+        self._brasilapi_client = brasilapi_client
+
+    def _brasilapi(self) -> BrasilApiCnpjClient:
+        if self._brasilapi_client is None:
+            from app.integrations.brasilapi import BrasilApiCnpjClient
+
+            self._brasilapi_client = BrasilApiCnpjClient()
+        return self._brasilapi_client
 
     def _financeiro(self) -> FinanceiroService:
         if self._financeiro_service is None:
@@ -518,6 +539,89 @@ class ManutencaoService:
                 "Tipo de maquina possui maquinas cadastradas e nao pode ser excluido."
             )
         return self.repository.delete_tipo_maquina(id_tipo_maquina)
+
+    # ------------------------------------------------------------------
+    # Prestador de servico
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _digits_only(value: str) -> str:
+        return re.sub(r"\D", "", value or "")
+
+    def create_prestador(
+        self,
+        payload: PrestadorServicoCreateSchema,
+    ) -> PrestadorServicoReadSchema:
+        cnpj_digits = self._digits_only(payload.cnpj)
+        if len(cnpj_digits) != 14:
+            raise ManutencaoValidationError("CNPJ deve conter 14 digitos.")
+        if self.repository.get_prestador_by_cnpj(cnpj_digits) is not None:
+            raise ManutencaoConflictError("Ja existe prestador com este CNPJ.")
+        created = self.repository.create_prestador(
+            PrestadorServicoCreateSchema(
+                nome=payload.nome.strip(),
+                cnpj=cnpj_digits,
+                especialidade=payload.especialidade.strip(),
+                telefone=payload.telefone.strip(),
+            )
+        )
+        if created is None:
+            raise ManutencaoError("Nao foi possivel criar o prestador.")
+        return created
+
+    def list_prestadores(self) -> list[PrestadorServicoReadSchema]:
+        return self.repository.list_prestadores()
+
+    def get_prestador(self, id_prestador: int) -> PrestadorServicoReadSchema:
+        prestador = self.repository.get_prestador_by_id(id_prestador)
+        if prestador is None:
+            raise ManutencaoNotFoundError(
+                f"Prestador {id_prestador} nao encontrado."
+            )
+        return prestador
+
+    def update_prestador(
+        self,
+        id_prestador: int,
+        payload: PrestadorServicoUpdateSchema,
+    ) -> PrestadorServicoReadSchema:
+        self.get_prestador(id_prestador)
+        data = payload.model_dump(exclude_unset=True)
+        if "cnpj" in data and data["cnpj"] is not None:
+            cnpj_digits = self._digits_only(data["cnpj"])
+            if len(cnpj_digits) != 14:
+                raise ManutencaoValidationError("CNPJ deve conter 14 digitos.")
+            existing = self.repository.get_prestador_by_cnpj(cnpj_digits)
+            if existing is not None and existing.id_prestador != id_prestador:
+                raise ManutencaoConflictError("Ja existe prestador com este CNPJ.")
+            data["cnpj"] = cnpj_digits
+        updated = self.repository.update_prestador(
+            id_prestador, PrestadorServicoUpdateSchema(**data)
+        )
+        if updated is None:
+            raise ManutencaoError("Nao foi possivel atualizar o prestador.")
+        return updated
+
+    def delete_prestador(self, id_prestador: int) -> bool:
+        self.get_prestador(id_prestador)
+        if self.repository.count_manutencoes_by_prestador(id_prestador) > 0:
+            raise ManutencaoConflictError(
+                "Prestador possui manutencoes vinculadas e nao pode ser excluido."
+            )
+        return self.repository.delete_prestador(id_prestador)
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        """Busca dados de empresa no BrasilAPI para autocompletar cadastro."""
+        try:
+            return self._brasilapi().fetch(cnpj)
+        except IntegrationNotFoundError as exc:
+            raise ManutencaoNotFoundError(str(exc.message)) from exc
+        except IntegrationValidationError as exc:
+            raise ManutencaoValidationError(str(exc.message)) from exc
+        except IntegrationHttpError as exc:
+            raise ManutencaoError(
+                "Nao foi possivel consultar o CNPJ na BrasilAPI. Tente novamente."
+            ) from exc
 
     # ------------------------------------------------------------------
     # Maquina

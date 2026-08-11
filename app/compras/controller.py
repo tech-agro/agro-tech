@@ -25,7 +25,13 @@ from app.compras.schemas.purchase import (
     PurchaseReadSchema,
     PurchaseUpdateSchema,
 )
+from app.compras.schemas.supplier import (
+    SupplierCreateSchema,
+    SupplierReadSchema,
+    SupplierUpdateSchema,
+)
 from app.compras.service import PurchaseService
+from app.integrations.schemas import CompanyData
 
 
 class PurchaseController:
@@ -51,6 +57,26 @@ class PurchaseController:
         self.router.get(
             "/lookups/cost-centers", response_model=list[CostCenterOptionSchema]
         )(self.list_cost_center_options)
+        self.router.get("/cnpj/{cnpj}", response_model=CompanyData)(
+            self.lookup_empresa_por_cnpj
+        )
+
+        # Supplier CRUD (must be registered before /{purchase_id}).
+        self.router.post("/suppliers", response_model=SupplierReadSchema)(
+            self.create_supplier
+        )
+        self.router.get("/suppliers", response_model=list[SupplierReadSchema])(
+            self.list_suppliers
+        )
+        self.router.get("/suppliers/{supplier_id}", response_model=SupplierReadSchema)(
+            self.get_supplier
+        )
+        self.router.patch("/suppliers/{supplier_id}", response_model=SupplierReadSchema)(
+            self.update_supplier
+        )
+        self.router.delete(
+            "/suppliers/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT
+        )(self.delete_supplier)
 
         self.router.post("/orders", response_model=OrderReadSchema)(self.create_order)
         self.router.get("/orders", response_model=list[OrderReadSchema])(self.list_orders)
@@ -99,6 +125,46 @@ class PurchaseController:
 
     def list_cost_center_options(self) -> list[CostCenterOptionSchema]:
         return self.service.list_cost_center_options()
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        try:
+            return self.service.lookup_empresa_por_cnpj(cnpj)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+
+    def create_supplier(self, payload: SupplierCreateSchema) -> SupplierReadSchema:
+        try:
+            return self.service.create_supplier(payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+
+    def list_suppliers(self) -> list[SupplierReadSchema]:
+        return self.service.list_suppliers()
+
+    def get_supplier(self, supplier_id: int) -> SupplierReadSchema:
+        supplier = self.service.get_supplier(supplier_id)
+        if supplier is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Supplier not found")
+        return supplier
+
+    def update_supplier(
+        self, supplier_id: int, payload: SupplierUpdateSchema
+    ) -> SupplierReadSchema:
+        try:
+            supplier = self.service.update_supplier(supplier_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if supplier is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Supplier not found")
+        return supplier
+
+    def delete_supplier(self, supplier_id: int) -> None:
+        try:
+            ok = self.service.delete_supplier(supplier_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if not ok:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Supplier not found")
 
     def create_order(self, payload: OrderCreateSchema) -> OrderReadSchema:
         try:
