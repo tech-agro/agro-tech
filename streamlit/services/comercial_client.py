@@ -10,6 +10,7 @@ from app.comercial.models import (
     CertificacaoModel,
     ClienteModel,
     ClienteOption,
+    CotacaoAgroDocSyncRequest,
     LoteOption,
     NovaCategoriaProduto,
     NovaCertificacao,
@@ -238,6 +239,17 @@ class ComercialClient:
         response = requests.get(self._url(f"/comercial/cnpj/{cnpj}"), timeout=self.timeout)
         self._raise_for_api(response)
         return CompanyData.model_validate(response.json())
+
+    # --- Cotacao de mercado (AgroDoc / CEPEA) ---
+
+    def sync_cotacao_agrodoc(self, payload: CotacaoAgroDocSyncRequest) -> list[int]:
+        response = requests.post(
+            self._url("/comercial/cotacoes-grao/sync-agrodoc"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return list(response.json())
 
     # --- Venda ---
 

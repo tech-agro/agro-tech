@@ -84,3 +84,15 @@ docker compose exec db psql -U postgres -d agro_tech
 - O controle de execução fica na tabela `schema_migrations`
 - A evolução do schema deve ser feita apenas por novas migrações
 
+## Integrações externas
+
+Conectores para APIs de terceiros ficam em `app/integrations/` (`BaseApiClient` +
+DTOs Pydantic em `schemas.py`). Nenhuma delas exige API key hoje:
+
+- **Open-Meteo** — clima, usado por Inteligência
+- **AgroDoc** — cotações CEPEA (boi, vaca, soja, milho, bezerro), usado por
+  Inteligência e Comercial (`/inteligencia/indicadores/cotacao/*`,
+  `/comercial/cotacoes-grao/sync-agrodoc`)
+- **ViaCEP** — endereço por CEP
+- **BrasilAPI** — consulta de CNPJ
+

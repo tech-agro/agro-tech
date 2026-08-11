@@ -39,6 +39,7 @@ from app.integrations.schemas import CompanyData
 if TYPE_CHECKING:
     from app.estoque.service import EstoqueService
     from app.financeiro.service import FinanceiroService
+    from app.inteligencia.service import InteligenciaService
     from app.logistica.service import LogisticsService
 
 logger = logging.getLogger(__name__)
@@ -53,12 +54,14 @@ class ComercialService:
         inventory_service: "EstoqueService | None" = None,
         financeiro_service: "FinanceiroService | None" = None,
         logistica_service: "LogisticsService | None" = None,
+        inteligencia_service: "InteligenciaService | None" = None,
         brasilapi_client: BrasilApiCnpjClient | None = None,
     ) -> None:
         self.repository = repository or ComercialRepository(pg_connector, logger)
         self._inventory_service = inventory_service
         self._financeiro_service = financeiro_service
         self._logistica_service = logistica_service
+        self._inteligencia_service = inteligencia_service
         self._brasilapi_client = brasilapi_client
 
     def _brasilapi(self) -> BrasilApiCnpjClient:
@@ -86,6 +89,13 @@ class ComercialService:
 
             self._logistica_service = LogisticsService()
         return self._logistica_service
+
+    def _inteligencia(self) -> "InteligenciaService":
+        if self._inteligencia_service is None:
+            from app.inteligencia.service import InteligenciaService
+
+            self._inteligencia_service = InteligenciaService()
+        return self._inteligencia_service
 
     # ------------------------------------------------------------------
     # CategoriaProduto
@@ -315,6 +325,25 @@ class ComercialService:
         except IntegrationHttpError as exc:
             raise ValueError(
                 "Nao foi possivel consultar o CNPJ na BrasilAPI. Tente novamente."
+            ) from exc
+
+    def sincronizar_cotacao_mercado(
+        self,
+        *,
+        uf: str | None = None,
+        id_safra: int | None = None,
+        data_referencia: date | None = None,
+    ) -> list[int]:
+        """Aciona o conector AgroDoc para atualizar os indicadores de cotacao (medicao_indicador)."""
+        try:
+            return self._inteligencia().register_market_price_measurement(
+                uf=uf, id_safra=id_safra, data_referencia=data_referencia,
+            )
+        except IntegrationValidationError as exc:
+            raise ValueError(str(exc.message)) from exc
+        except IntegrationHttpError as exc:
+            raise ValueError(
+                "Nao foi possivel consultar a cotacao na AgroDoc. Tente novamente."
             ) from exc
 
     # ------------------------------------------------------------------

@@ -154,6 +154,13 @@ class NovaCotacaoGrao(BaseModel):
     preco: Decimal
 
 
+# Parametros para acionar a sincronizacao de indicadores de mercado via AgroDoc
+class CotacaoAgroDocSyncRequest(BaseModel):
+    uf: str | None = None
+    id_safra: int | None = None
+    data_referencia: date | None = None
+
+
 class NovoInsumo(BaseModel):
     id_produto: int
     classe_agronomica: str | None = None

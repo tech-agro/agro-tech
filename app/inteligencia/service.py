@@ -13,8 +13,9 @@ from app.inteligencia.errors import (
     InteligenciaNotFoundError,
     InteligenciaValidationError,
 )
+from app.integrations.agrodoc import AgroDocClient
 from app.integrations.open_meteo import OpenMeteoClient
-from app.integrations.schemas import WeatherData
+from app.integrations.schemas import MarketPriceData, WeatherData
 from app.inteligencia.repository import (
     IndicadorFilters,
     IndicadorRepository,
@@ -339,6 +340,65 @@ class InteligenciaService:
                         "id_indicador": id_indicador,
                         "id_safra": id_safra,
                         "valor": Decimal(str(valor)),
+                        "data_referencia": referencia,
+                    },
+                ).first()
+                if med is not None:
+                    ids_medicao.append(int(med[0]))
+        return ids_medicao
+
+    def consultar_cotacao_atual(
+        self,
+        *,
+        uf: str | None = None,
+        client: AgroDocClient | None = None,
+    ) -> list[MarketPriceData]:
+        """Leitura ao vivo da cotacao (sem persistir), para widgets de dashboard."""
+        return (client or AgroDocClient()).fetch(uf=uf)
+
+    def register_market_price_measurement(
+        self,
+        *,
+        uf: str | None = None,
+        id_safra: int | None = None,
+        data_referencia: date | None = None,
+        client: AgroDocClient | None = None,
+    ) -> list[int]:
+        """Called by Comercial to record CEPEA market price indicators (AgroDoc)."""
+        quotes = (client or AgroDocClient()).fetch(uf=uf)
+        referencia = data_referencia or date.today()
+
+        ids_medicao: list[int] = []
+        with get_session() as session:
+            for quote in quotes:
+                row = session.execute(
+                    text("SELECT id_indicador FROM indicador WHERE nome = :nome LIMIT 1"),
+                    {"nome": quote.product},
+                ).first()
+                if row is None:
+                    row = session.execute(
+                        text(
+                            """
+                            INSERT INTO indicador (nome, unidade)
+                            VALUES (:nome, :unidade)
+                            RETURNING id_indicador
+                            """
+                        ),
+                        {"nome": quote.product, "unidade": quote.unit},
+                    ).first()
+                id_indicador = int(row[0])
+                med = session.execute(
+                    text(
+                        """
+                        INSERT INTO medicao_indicador (id_indicador, id_safra, valor, data_referencia)
+                        VALUES (:id_indicador, :id_safra, :valor, :data_referencia)
+                        RETURNING id_medicao
+                        """
+                    ),
+                    {
+                        "id_indicador": id_indicador,
+                        "id_safra": id_safra,
+                        "valor": Decimal(str(quote.price)),
                         "data_referencia": referencia,
                     },
                 ).first()

@@ -63,6 +63,16 @@ class ClimaSyncResponseSchema(BaseModel):
     ids_medicao: list[int]
 
 
+class CotacaoSyncRequestSchema(BaseModel):
+    uf: str | None = Field(default=None, min_length=2, max_length=2)
+    id_safra: int | None = None
+    data_referencia: date | None = None
+
+
+class CotacaoSyncResponseSchema(BaseModel):
+    ids_medicao: list[int]
+
+
 class IndicadorAgregacaoSchema(BaseModel):
     id_indicador: int
     indicador_nome: str | None = None

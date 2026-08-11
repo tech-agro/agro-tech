@@ -16,6 +16,8 @@ from app.inteligencia.repository import IndicadorFilters, MedicaoIndicadorFilter
 from app.inteligencia.schemas import (
     ClimaSyncRequestSchema,
     ClimaSyncResponseSchema,
+    CotacaoSyncRequestSchema,
+    CotacaoSyncResponseSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -26,7 +28,7 @@ from app.inteligencia.schemas import (
 )
 from app.inteligencia.service import InteligenciaService
 from app.integrations.exceptions import IntegrationError
-from app.integrations.schemas import WeatherData
+from app.integrations.schemas import MarketPriceData, WeatherData
 
 
 class InteligenciaController:
@@ -78,6 +80,14 @@ class InteligenciaController:
             "/indicadores/clima/atual",
             response_model=WeatherData,
         )(self.clima_atual)
+        self.router.get(
+            "/indicadores/cotacao/atual",
+            response_model=list[MarketPriceData],
+        )(self.cotacao_atual)
+        self.router.post(
+            "/indicadores/cotacao/sync",
+            response_model=CotacaoSyncResponseSchema,
+        )(self.sync_cotacao)
 
         self.router.post("/medicoes", response_model=MedicaoIndicadorReadSchema)(
             self.create_medicao
@@ -168,6 +178,23 @@ class InteligenciaController:
         except IntegrationError as exc:
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
         return ClimaSyncResponseSchema(ids_medicao=ids_medicao)
+
+    def cotacao_atual(self, uf: str | None = Query(default=None)) -> list[MarketPriceData]:
+        try:
+            return self.service.consultar_cotacao_atual(uf=uf)
+        except IntegrationError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
+
+    def sync_cotacao(self, payload: CotacaoSyncRequestSchema) -> CotacaoSyncResponseSchema:
+        try:
+            ids_medicao = self.service.register_market_price_measurement(
+                uf=payload.uf,
+                id_safra=payload.id_safra,
+                data_referencia=payload.data_referencia,
+            )
+        except IntegrationError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.message) from exc
+        return CotacaoSyncResponseSchema(ids_medicao=ids_medicao)
 
     def create_medicao(
         self,

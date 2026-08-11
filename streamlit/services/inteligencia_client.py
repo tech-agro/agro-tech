@@ -13,6 +13,8 @@ from app.core.config import settings
 from app.inteligencia.schemas import (
     ClimaSyncRequestSchema,
     ClimaSyncResponseSchema,
+    CotacaoSyncRequestSchema,
+    CotacaoSyncResponseSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -21,7 +23,7 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
 )
-from app.integrations.schemas import WeatherData
+from app.integrations.schemas import MarketPriceData, WeatherData
 from services.identity_client import SESSION_KEY_TOKEN
 
 
@@ -240,3 +242,23 @@ class InteligenciaClient:
         )
         self._raise_for_api(response)
         return ClimaSyncResponseSchema.model_validate(response.json())
+
+    # --- Cotacao (AgroDoc / CEPEA) ---
+
+    def get_cotacao_atual(self, *, uf: str | None = None) -> list[MarketPriceData]:
+        response = self._request(
+            "GET",
+            "/inteligencia/indicadores/cotacao/atual",
+            params={"uf": uf} if uf else None,
+        )
+        self._raise_for_api(response)
+        return [MarketPriceData.model_validate(item) for item in response.json()]
+
+    def sync_cotacao(self, payload: CotacaoSyncRequestSchema) -> CotacaoSyncResponseSchema:
+        response = self._request(
+            "POST",
+            "/inteligencia/indicadores/cotacao/sync",
+            json=payload.model_dump(mode="json"),
+        )
+        self._raise_for_api(response)
+        return CotacaoSyncResponseSchema.model_validate(response.json())

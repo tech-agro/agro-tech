@@ -16,12 +16,13 @@ import streamlit as st
 
 from app.inteligencia.schemas import (
     ClimaSyncRequestSchema,
+    CotacaoSyncRequestSchema,
     IndicadorCreateSchema,
     IndicadorUpdateSchema,
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorUpdateSchema,
 )
-from components.shared import clima
+from components.shared import clima, cotacao
 from components.shared.screens import data_table, setup_page, toast_error, toast_ok
 from services import producao_client as producao_api
 from services.identity_client import require_login
@@ -379,6 +380,51 @@ def _render_clima_tab() -> None:
     clima.render_clima_trend()
 
 
+def _render_cotacao_tab() -> None:
+    """Fonte principal de dados: API AgroDoc (CEPEA). Ve-se e sincroniza-se aqui."""
+    st.caption(
+        "Cotacoes de boi gordo, vaca gorda, soja, milho e bezerro (CEPEA/ESALQ via "
+        "AgroDoc). Sincronize para registrar o historico em medicao_indicador."
+    )
+    uf = cotacao.render_uf_input(key_prefix="inteligencia_cotacao")
+    cotacao.render_cotacao_atual(uf=uf)
+
+    try:
+        safras = _listar_safras()
+    except Exception:
+        safras = []
+    mapa_safra = {"Nenhuma": None}
+    mapa_safra.update({_label_safra(s): s["id_safra"] for s in safras})
+
+    col_safra, col_botao = st.columns([3, 1])
+    with col_safra:
+        safra_escolha = st.selectbox(
+            "Associar a safra (opcional)", list(mapa_safra.keys()), key="cotacao_safra"
+        )
+    with col_botao:
+        st.write("")
+        sincronizar = st.button(
+            "Sincronizar", type="primary", use_container_width=True, key="cotacao_sync_btn"
+        )
+
+    if sincronizar:
+        try:
+            resultado = _client().sync_cotacao(
+                CotacaoSyncRequestSchema(
+                    uf=uf,
+                    id_safra=mapa_safra[safra_escolha],
+                    data_referencia=date.today(),
+                )
+            )
+            toast_ok(f"{len(resultado.ids_medicao)} cotacoes registradas.")
+            st.rerun()
+        except InteligenciaApiError as exc:
+            toast_error(exc)
+
+    st.divider()
+    cotacao.render_cotacao_trend()
+
+
 def _render_metricas_proprias() -> None:
     """Secundario: cadastro manual de indicadores/medicoes, fora do foco principal."""
     st.caption(
@@ -397,10 +443,13 @@ require_login()
 
 setup_page("Inteligencia", "Indicadores vindos de APIs conectadas, com espaco para metricas proprias.")
 
-tab_clima, tab_proprias = st.tabs(["Clima", "Metricas proprias"])
+tab_clima, tab_cotacao, tab_proprias = st.tabs(["Clima", "Cotacao", "Metricas proprias"])
 
 with tab_clima:
     _render_clima_tab()
+
+with tab_cotacao:
+    _render_cotacao_tab()
 
 with tab_proprias:
     _render_metricas_proprias()

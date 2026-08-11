@@ -17,6 +17,7 @@ from app.comercial.models import (
     CertificacaoModel,
     ClienteModel,
     ClienteOption,
+    CotacaoAgroDocSyncRequest,
     CotacaoGraoModel,
     GraoModel,
     InsumoModel,
@@ -124,6 +125,9 @@ class ComercialController:
         self.router.get("/cotacoes-grao", response_model=list[CotacaoGraoModel])(self.list_cotacoes_grao)
         self.router.post("/cotacoes-grao", response_model=CotacaoGraoModel)(self.create_cotacao_grao)
         self.router.delete("/cotacoes-grao/{id_cotacao}")(self.delete_cotacao_grao)
+        self.router.post("/cotacoes-grao/sync-agrodoc", response_model=list[int])(
+            self.sync_cotacao_agrodoc
+        )
 
         # --- Certificacao ---
         self.router.get("/certificacoes", response_model=list[CertificacaoModel])(self.list_certificacoes)
@@ -353,6 +357,14 @@ class ComercialController:
         if not self.service.delete_cotacao_grao(id_cotacao):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Cotacao nao encontrada.")
         return {"message": "Cotacao removida."}
+
+    def sync_cotacao_agrodoc(self, dados: CotacaoAgroDocSyncRequest) -> list[int]:
+        return self._executar(
+            self.service.sincronizar_cotacao_mercado,
+            uf=dados.uf,
+            id_safra=dados.id_safra,
+            data_referencia=dados.data_referencia,
+        )
 
     # ------------------------------------------------------------------
     # Certificacao
