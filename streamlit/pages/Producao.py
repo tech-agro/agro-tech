@@ -661,7 +661,7 @@ with aba_operacoes:
 # ----------------------------------------------------------------------
 with aba_monitoramento:
     aba_clima_monit, aba_solo_monit, aba_fenologia_monit = st.tabs(
-        ["🌦️ Clima", "🧪 Solo", "🌱 Fenologia"]
+        ["Clima", "Solo", "Fenologia"]
     )
 
     with aba_clima_monit:

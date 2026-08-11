@@ -5,11 +5,11 @@ from __future__ import annotations
 import pandas as pd
 
 STATUS_RECEBIMENTO = {
-    "ABERTA": "⚪ Aberta",
-    "PARCIALMENTE_RECEBIDA": "🟡 Parcial",
-    "RECEBIDA": "🟢 Recebida",
-    "VENCIDA": "🔴 Vencida",
-    "CANCELADA": "⚫ Cancelada",
+    "ABERTA": "Aberta",
+    "PARCIALMENTE_RECEBIDA": "Parcial",
+    "RECEBIDA": "Recebida",
+    "VENCIDA": "Vencida",
+    "CANCELADA": "Cancelada",
 }
 
 

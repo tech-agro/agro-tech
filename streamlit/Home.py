@@ -77,21 +77,21 @@ def _inicio() -> None:
 
 
 pages = {
-    "": [st.Page(_inicio, title="Inicio", icon="🏠", default=True)],
+    "": [st.Page(_inicio, title="Inicio", icon=":material/home:", default=True)],
     "Operacao": [
-        st.Page("pages/Producao.py", title="Producao", icon="🌱"),
-        st.Page("pages/Estoque.py", title="Estoque", icon="📦"),
-        st.Page("pages/Manutencao.py", title="Manutencao", icon="🔧"),
-        st.Page("pages/Logistica.py", title="Logistica", icon="🚚"),
-        st.Page("pages/Fitossanidade.py", title="Fitossanidade", icon="🌿"),
+        st.Page("pages/Producao.py", title="Producao", icon=":material/agriculture:"),
+        st.Page("pages/Estoque.py", title="Estoque", icon=":material/inventory_2:"),
+        st.Page("pages/Manutencao.py", title="Manutencao", icon=":material/build:"),
+        st.Page("pages/Logistica.py", title="Logistica", icon=":material/local_shipping:"),
+        st.Page("pages/Fitossanidade.py", title="Fitossanidade", icon=":material/eco:"),
     ],
     "Comercial & Financeiro": [
-        st.Page("pages/Comercial.py", title="Comercial", icon="🤝"),
-        st.Page("pages/Compras.py", title="Compras", icon="🛒"),
-        st.Page("pages/Financeiro.py", title="Financeiro", icon="💰"),
+        st.Page("pages/Comercial.py", title="Comercial", icon=":material/handshake:"),
+        st.Page("pages/Compras.py", title="Compras", icon=":material/shopping_cart:"),
+        st.Page("pages/Financeiro.py", title="Financeiro", icon=":material/payments:"),
     ],
     "Inteligencia": [
-        st.Page("pages/Inteligencia.py", title="Inteligencia", icon="📊"),
+        st.Page("pages/Inteligencia.py", title="Inteligencia", icon=":material/analytics:"),
     ],
 }
 

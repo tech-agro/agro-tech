@@ -151,7 +151,9 @@ def render_aging_chart(contas_pagar: list, contas_receber: list) -> None:
     vencidas = [l for l in linhas if l["bucket"] == "Vencidas"]
     if vencidas:
         total_vencido = sum(l["valor"] for l in vencidas)
-        st.error(f"⚠ {_brl(total_vencido)} em contas já vencidas — priorize a regularização.")
+        st.error(
+            f"{_brl(total_vencido)} em contas já vencidas — priorize a regularização."
+        )
 
 
 def render_criticas_table(contas_pagar: list, contas_receber: list) -> None:

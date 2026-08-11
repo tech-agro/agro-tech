@@ -1,4 +1,4 @@
-"""Compras — CRUD padrao: tabela + Novo + Ver/Editar/Excluir."""
+"""Compras — abas: Pedidos | Fornecedores."""
 
 from __future__ import annotations
 
@@ -16,8 +16,10 @@ from app.compras.enum import OrderStatus
 from app.compras.schemas.lookups import ProductOptionSchema, SupplierOptionSchema
 from app.compras.schemas.order import OrderUpdateSchema
 from app.compras.schemas.order_item import OrderItemCreateSchema
-from components.compras.dialog_state import DIALOG_KEY, clear_dialog_state, open_dialog
+from components.compras import fornecedores_dialogs
+from components.compras.dialog_state import clear_dialog_state, get_dialog, open_dialog
 from components.compras.formatters import STATUS_LABELS, product_label, supplier_label
+from components.compras.fornecedores_tables import fornecedores_df
 from components.compras.items_editor import (
     COL_PRICE,
     COL_QTY,
@@ -43,7 +45,7 @@ from services.identity_client import require_login
 
 require_login()
 
-setup_page("Compras", "Gestao de pedidos de compra.")
+setup_page("Compras", "Gestao de pedidos de compra e fornecedores.")
 
 
 def _client() -> PurchasesClient:
@@ -80,7 +82,7 @@ def _dialog_new_order(
     col_cancel, _, col_save = st.columns([1, 3, 1])
     with col_cancel:
         if st.button("Cancelar", use_container_width=True):
-            clear_dialog_state()
+            clear_dialog_state("pedidos")
             st.rerun()
     with col_save:
         if st.button("Criar", type="primary", use_container_width=True):
@@ -109,7 +111,7 @@ def _dialog_new_order(
                     status=OrderStatus.ABERTO,
                     itens=itens,
                 )
-                clear_dialog_state()
+                clear_dialog_state("pedidos")
                 toast_ok(f"Pedido #{order.id_pedido} criado.")
                 st.rerun()
             except ValueError as exc:
@@ -156,7 +158,7 @@ def _dialog_detail(order_id: int) -> None:
     _, col_close = st.columns([4, 1])
     with col_close:
         if st.button("Fechar", use_container_width=True):
-            clear_dialog_state()
+            clear_dialog_state("pedidos")
             st.rerun()
 
 
@@ -237,7 +239,7 @@ def _dialog_edit(
     col_cancel, _, col_save = st.columns([1, 3, 1])
     with col_cancel:
         if st.button("Cancelar", use_container_width=True):
-            clear_dialog_state(order_id)
+            clear_dialog_state("pedidos", order_id)
             st.rerun()
     with col_save:
         if st.button("Salvar", type="primary", use_container_width=True):
@@ -257,7 +259,7 @@ def _dialog_edit(
                         status=status_values[status_labels.index(status_label)],
                     ),
                 )
-                clear_dialog_state(order_id)
+                clear_dialog_state("pedidos", order_id)
                 toast_ok("Pedido atualizado.")
                 st.rerun()
             except ValueError as exc:
@@ -274,58 +276,94 @@ def _dialog_delete(order_id: int) -> None:
         if st.button("Excluir", type="primary", use_container_width=True):
             try:
                 _client().delete_order(order_id)
-                clear_dialog_state(order_id)
+                clear_dialog_state("pedidos", order_id)
                 toast_ok("Pedido excluido.")
                 st.rerun()
             except Exception as exc:
                 toast_error(exc)
     with c2:
         if st.button("Cancelar", use_container_width=True):
-            clear_dialog_state(order_id)
+            clear_dialog_state("pedidos", order_id)
             st.rerun()
 
 
-try:
-    client = _client()
-    orders = client.list_orders()
-    suppliers = client.list_suppliers()
-    products = client.list_products()
-except Exception as exc:
-    st.error(f"Nao foi possivel carregar os pedidos: {exc}")
-    st.stop()
+tab_pedidos, tab_fornecedores = st.tabs(["Pedidos", "Fornecedores"])
 
-query, new_clicked = crud_toolbar(
-    key="compras",
-    filter_placeholder="Filtrar pedidos...",
-    new_label="Novo",
-)
-if new_clicked:
-    open_dialog("new")
+with tab_pedidos:
+    try:
+        client = _client()
+        orders = client.list_orders()
+        suppliers = client.list_suppliers()
+        products = client.list_products()
+    except Exception as exc:
+        st.error(f"Nao foi possivel carregar os pedidos: {exc}")
+        st.stop()
 
-df = filter_dataframe(orders_df(orders), query)
-selected = data_table(df, key="compras_orders")
-action = row_actions(
-    key="compras",
-    selected_count=len(selected),
-    total_count=len(df),
-    disabled=not selected,
-)
+    query, new_clicked = crud_toolbar(
+        key="compras_pedidos",
+        filter_placeholder="Filtrar pedidos...",
+        new_label="Novo",
+    )
+    if new_clicked:
+        open_dialog("pedidos", "new")
 
-if action == "view" and selected:
-    open_dialog("view", int(selected[0]["ID"]))
-elif action == "edit" and selected:
-    open_dialog("edit", int(selected[0]["ID"]))
-elif action == "delete" and selected:
-    open_dialog("delete", int(selected[0]["ID"]))
+    df = filter_dataframe(orders_df(orders), query)
+    selected = data_table(df, key="compras_orders")
+    action = row_actions(
+        key="compras_pedidos",
+        selected_count=len(selected),
+        total_count=len(df),
+        disabled=not selected,
+    )
 
-dialog = st.session_state.get(DIALOG_KEY)
-if dialog:
-    kind, order_id = dialog
-    if kind == "new":
-        _dialog_new_order(suppliers, products)
-    elif kind == "view" and order_id is not None:
-        _dialog_detail(order_id)
-    elif kind == "edit" and order_id is not None:
-        _dialog_edit(order_id, suppliers, products)
-    elif kind == "delete" and order_id is not None:
-        _dialog_delete(order_id)
+    if action == "view" and selected:
+        open_dialog("pedidos", "view", int(selected[0]["ID"]))
+    elif action == "edit" and selected:
+        open_dialog("pedidos", "edit", int(selected[0]["ID"]))
+    elif action == "delete" and selected:
+        open_dialog("pedidos", "delete", int(selected[0]["ID"]))
+
+    dialog = get_dialog("pedidos")
+    if dialog:
+        kind, order_id = dialog
+        if kind == "new":
+            _dialog_new_order(suppliers, products)
+        elif kind == "view" and order_id is not None:
+            _dialog_detail(order_id)
+        elif kind == "edit" and order_id is not None:
+            _dialog_edit(order_id, suppliers, products)
+        elif kind == "delete" and order_id is not None:
+            _dialog_delete(order_id)
+
+with tab_fornecedores:
+    try:
+        suppliers_full = _client().list_suppliers_full()
+    except Exception as exc:
+        st.error(f"Nao foi possivel carregar os fornecedores: {exc}")
+        st.stop()
+
+    query, new_clicked = crud_toolbar(
+        key="compras_fornecedores",
+        filter_placeholder="Filtrar fornecedores...",
+        new_label="Novo",
+    )
+    if new_clicked:
+        open_dialog("fornecedores", "create")
+
+    df = filter_dataframe(fornecedores_df(suppliers_full), query)
+    selected = data_table(df, key="compras_fornecedores_grid")
+    action = row_actions(
+        key="compras_fornecedores",
+        selected_count=len(selected),
+        total_count=len(df),
+        disabled=not selected,
+    )
+
+    if action == "view" and selected:
+        open_dialog("fornecedores", "view", int(selected[0]["ID"]))
+    elif action == "edit" and selected:
+        open_dialog("fornecedores", "edit", int(selected[0]["ID"]))
+    elif action == "delete" and selected:
+        open_dialog("fornecedores", "delete", int(selected[0]["ID"]))
+
+    fornecedores_dialogs.render("fornecedores")

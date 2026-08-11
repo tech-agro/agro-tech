@@ -38,6 +38,11 @@ from app.manutencao.schemas.plano_manutencao import (
     PlanoManutencaoReadSchema,
     PlanoManutencaoUpdateSchema,
 )
+from app.manutencao.schemas.prestador_servico import (
+    PrestadorServicoCreateSchema,
+    PrestadorServicoReadSchema,
+    PrestadorServicoUpdateSchema,
+)
 from app.manutencao.schemas.tipo_maquina import (
     TipoMaquinaCreateSchema,
     TipoMaquinaReadSchema,
@@ -50,6 +55,7 @@ from app.manutencao.service import (
     ManutencaoService,
     ManutencaoValidationError,
 )
+from app.integrations.schemas import CompanyData
 
 T = TypeVar("T")
 
@@ -124,6 +130,37 @@ class ManutencaoController:
             response_model=MessageResponse,
             name="delete_tipo_maquina",
         )(self.delete_tipo_maquina)
+
+        self.router.post(
+            "/prestadores",
+            response_model=PrestadorServicoReadSchema,
+            name="create_prestador",
+        )(self.create_prestador)
+        self.router.get(
+            "/prestadores",
+            response_model=list[PrestadorServicoReadSchema],
+            name="list_prestadores",
+        )(self.list_prestadores)
+        self.router.get(
+            "/prestadores/{id_prestador}",
+            response_model=PrestadorServicoReadSchema,
+            name="get_prestador",
+        )(self.get_prestador)
+        self.router.put(
+            "/prestadores/{id_prestador}",
+            response_model=PrestadorServicoReadSchema,
+            name="update_prestador",
+        )(self.update_prestador)
+        self.router.delete(
+            "/prestadores/{id_prestador}",
+            response_model=MessageResponse,
+            name="delete_prestador",
+        )(self.delete_prestador)
+        self.router.get(
+            "/cnpj/{cnpj}",
+            response_model=CompanyData,
+            name="lookup_empresa_por_cnpj",
+        )(self.lookup_empresa_por_cnpj)
 
         self.router.post(
             "/maquinas",
@@ -305,6 +342,43 @@ class ManutencaoController:
                 "Nao foi possivel excluir o tipo de maquina.",
             )
         return MessageResponse(message="Tipo de maquina excluido.")
+
+    def create_prestador(
+        self,
+        payload: PrestadorServicoCreateSchema,
+    ) -> PrestadorServicoReadSchema:
+        return self._handle_errors(lambda: self.service.create_prestador(payload))
+
+    def list_prestadores(self) -> list[PrestadorServicoReadSchema]:
+        return self._handle_errors(lambda: self.service.list_prestadores())
+
+    def get_prestador(self, id_prestador: int) -> PrestadorServicoReadSchema:
+        return self._handle_errors(lambda: self.service.get_prestador(id_prestador))
+
+    def update_prestador(
+        self,
+        id_prestador: int,
+        payload: PrestadorServicoUpdateSchema,
+    ) -> PrestadorServicoReadSchema:
+        return self._handle_errors(
+            lambda: self.service.update_prestador(id_prestador, payload)
+        )
+
+    def delete_prestador(self, id_prestador: int) -> MessageResponse:
+        deleted = self._handle_errors(
+            lambda: self.service.delete_prestador(id_prestador)
+        )
+        if not deleted:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Nao foi possivel excluir o prestador.",
+            )
+        return MessageResponse(message="Prestador excluido.")
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        return self._handle_errors(
+            lambda: self.service.lookup_empresa_por_cnpj(cnpj)
+        )
 
     def create_maquina(self, payload: MaquinaCreateRequest) -> MaquinaReadSchema:
         return self._handle_errors(

@@ -66,7 +66,9 @@ with tab_vendas:
         conta_por_venda = {c.id_venda: c for c in contas_receber if c.id_venda is not None}
     except FinanceiroApiError:
         conta_por_venda = {}
-        st.caption("⚠ Nao foi possivel carregar o status de recebimento do Financeiro agora.")
+        st.caption(
+            "Nao foi possivel carregar o status de recebimento do Financeiro agora."
+        )
 
     if vendas:
         total_valor = sum(float(v.valor_total) for v in vendas)

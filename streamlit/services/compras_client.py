@@ -27,7 +27,13 @@ from app.compras.schemas.purchase import (
     PurchaseReadSchema,
     PurchaseUpdateSchema,
 )
+from app.compras.schemas.supplier import (
+    SupplierCreateSchema,
+    SupplierReadSchema,
+    SupplierUpdateSchema,
+)
 from app.core.config import settings
+from app.integrations.schemas import CompanyData
 
 
 # API returns English details; Streamlit must show Portuguese to the user.
@@ -44,6 +50,14 @@ _API_DETAIL_TO_PT: tuple[tuple[str, str], ...] = (
     ("Order not found", "Pedido nao encontrado."),
     ("Order item not found", "Item do pedido nao encontrado."),
     ("Purchase not found", "Compra nao encontrada."),
+    ("Supplier not found", "Fornecedor nao encontrado."),
+    ("document already exists", "Ja existe uma pessoa com este documento."),
+    ("document is unique", "Ja existe uma pessoa com este documento."),
+    ("name and document are required", "Informe nome e documento do fornecedor."),
+    ("linked records", "Nao foi possivel excluir: ha registros vinculados."),
+    ("CNPJ invalido", "Informe um CNPJ valido (14 digitos)."),
+    ("nao encontrado na BrasilAPI", "CNPJ nao encontrado."),
+    ("Could not query CNPJ on BrasilAPI", "Nao foi possivel consultar o CNPJ. Tente novamente."),
     ("foreign key", "Nao foi possivel excluir: ha registros vinculados."),
 )
 
@@ -113,6 +127,54 @@ class PurchasesClient:
         )
         self._raise_for_api(response)
         return [CostCenterOptionSchema.model_validate(item) for item in response.json()]
+
+    # --- Suppliers ---
+
+    def list_suppliers_full(self) -> list[SupplierReadSchema]:
+        response = requests.get(self._url("/purchases/suppliers"), timeout=self.timeout)
+        self._raise_for_api(response)
+        return [SupplierReadSchema.model_validate(item) for item in response.json()]
+
+    def get_supplier(self, supplier_id: int) -> SupplierReadSchema:
+        response = requests.get(
+            self._url(f"/purchases/suppliers/{supplier_id}"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return SupplierReadSchema.model_validate(response.json())
+
+    def create_supplier(self, payload: SupplierCreateSchema) -> SupplierReadSchema:
+        response = requests.post(
+            self._url("/purchases/suppliers"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return SupplierReadSchema.model_validate(response.json())
+
+    def update_supplier(
+        self, supplier_id: int, payload: SupplierUpdateSchema
+    ) -> SupplierReadSchema:
+        response = requests.patch(
+            self._url(f"/purchases/suppliers/{supplier_id}"),
+            json=payload.model_dump(mode="json", exclude_unset=True),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return SupplierReadSchema.model_validate(response.json())
+
+    def delete_supplier(self, supplier_id: int) -> None:
+        response = requests.delete(
+            self._url(f"/purchases/suppliers/{supplier_id}"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        response = requests.get(
+            self._url(f"/purchases/cnpj/{cnpj}"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return CompanyData.model_validate(response.json())
 
     # --- Orders ---
 
