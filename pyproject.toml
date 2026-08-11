@@ -11,3 +11,7 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: testes que dependem do PostgreSQL",
+    "unit: testes unitarios sem dependencias externas",
+]

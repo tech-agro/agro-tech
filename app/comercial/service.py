@@ -28,11 +28,18 @@ from app.comercial.models import (
 from app.comercial.repository import ComercialRepository
 from app.core.database import pg_connector
 from app.estoque.enum import StatusLote
+from app.integrations.brasilapi import BrasilApiCnpjClient
+from app.integrations.exceptions import (
+    IntegrationHttpError,
+    IntegrationNotFoundError,
+    IntegrationValidationError,
+)
+from app.integrations.schemas import CompanyData
 
 if TYPE_CHECKING:
     from app.estoque.service import EstoqueService
     from app.financeiro.service import FinanceiroService
-    from app.logistica.service import LogisticaService
+    from app.logistica.service import LogisticsService
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +52,19 @@ class ComercialService:
         repository: ComercialRepository | None = None,
         inventory_service: "EstoqueService | None" = None,
         financeiro_service: "FinanceiroService | None" = None,
-        logistica_service: "LogisticaService | None" = None,
+        logistica_service: "LogisticsService | None" = None,
+        brasilapi_client: BrasilApiCnpjClient | None = None,
     ) -> None:
         self.repository = repository or ComercialRepository(pg_connector, logger)
         self._inventory_service = inventory_service
         self._financeiro_service = financeiro_service
         self._logistica_service = logistica_service
+        self._brasilapi_client = brasilapi_client
+
+    def _brasilapi(self) -> BrasilApiCnpjClient:
+        if self._brasilapi_client is None:
+            self._brasilapi_client = BrasilApiCnpjClient()
+        return self._brasilapi_client
 
     def _inventory(self) -> "EstoqueService":
         if self._inventory_service is None:
@@ -66,11 +80,11 @@ class ComercialService:
             self._financeiro_service = FinanceiroService()
         return self._financeiro_service
 
-    def _logistica(self) -> "LogisticaService":
+    def _logistica(self) -> "LogisticsService":
         if self._logistica_service is None:
-            from app.logistica.service import LogisticaService
+            from app.logistica.service import LogisticsService
 
-            self._logistica_service = LogisticaService()
+            self._logistica_service = LogisticsService()
         return self._logistica_service
 
     # ------------------------------------------------------------------
@@ -289,6 +303,19 @@ class ComercialService:
 
     def delete_cliente(self, id_cliente: int) -> bool:
         return self.repository.delete_cliente(id_cliente)
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        """Busca dados de empresa no BrasilAPI para autocompletar cadastro de cliente."""
+        try:
+            return self._brasilapi().fetch(cnpj)
+        except IntegrationNotFoundError as exc:
+            raise ValueError(str(exc.message)) from exc
+        except IntegrationValidationError as exc:
+            raise ValueError(str(exc.message)) from exc
+        except IntegrationHttpError as exc:
+            raise ValueError(
+                "Nao foi possivel consultar o CNPJ na BrasilAPI. Tente novamente."
+            ) from exc
 
     # ------------------------------------------------------------------
     # Venda — fluxo central do modulo

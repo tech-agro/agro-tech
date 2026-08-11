@@ -24,6 +24,7 @@ from app.comercial.models import (
     VendaComItens,
     VendaModel,
 )
+from app.integrations.schemas import CompanyData
 from app.comercial.enum import StatusCliente
 from app.core.config import settings
 
@@ -232,6 +233,11 @@ class ComercialClient:
     def delete_cliente(self, id_cliente: int) -> None:
         response = requests.delete(self._url(f"/comercial/clientes/{id_cliente}"), timeout=self.timeout)
         self._raise_for_api(response)
+
+    def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
+        response = requests.get(self._url(f"/comercial/cnpj/{cnpj}"), timeout=self.timeout)
+        self._raise_for_api(response)
+        return CompanyData.model_validate(response.json())
 
     # --- Venda ---
 

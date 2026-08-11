@@ -42,7 +42,7 @@ class CompanyData(BaseModel):
     """Normalized company registry data from BrasilAPI CNPJ (#78)."""
 
     cnpj: str
-    razao_social: str | None = None
+    razao_social: str = Field(min_length=1)
     nome_fantasia: str | None = None
     situacao_cadastral: str | None = None
     cep: str | None = None
