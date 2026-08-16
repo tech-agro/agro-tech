@@ -20,6 +20,9 @@ ENUMS DE STATUS SUGERIDOS
 - status_atividade_agricola_enum: PENDENTE, EM_ANDAMENTO, CONCLUIDA, CANCELADA
 - status_colheita_enum: ABERTA, EM_ANDAMENTO, CONCLUIDA, CANCELADA
 - status_pedido_compra_enum: ABERTO, APROVADO, PARCIALMENTE_ATENDIDO, ATENDIDO, CANCELADO
+- status_solicitacao_compra_enum: RASCUNHO, ENVIADA, APROVADA, REJEITADA, CANCELADA
+- status_cotacao_compra_enum: RASCUNHO, ENVIADA, VENCEDORA, DESCARTADA
+- tipo_compra_enum: INSUMO, EQUIPAMENTO
 - status_maquina_enum: DISPONIVEL, EM_USO, EM_MANUTENCAO, INATIVA
 - status_manutencao_enum: ABERTA, EM_EXECUCAO, CONCLUIDA, CANCELADA
 - status_ordem_servico_enum: ABERTA, EM_EXECUCAO, CONCLUIDA, CANCELADA
@@ -474,8 +477,64 @@ SAIDA_ESTOQUE (
 PEDIDO_COMPRA (
     id_pedido: INT [PK]
     id_fornecedor: INT [FK]
+    id_solicitacao: INT [FK] NULL
+    tipo_compra: tipo_compra_enum
     data_pedido: DATE
     status: status_pedido_compra_enum
+)
+
+SOLICITACAO_COMPRA (
+    id_solicitacao: INT [PK]
+    data_solicitacao: DATE
+    status: status_solicitacao_compra_enum
+    tipo_compra: tipo_compra_enum
+    observacao: TEXT
+    id_tipo_maquina: INT [FK] NULL
+    patrimonio: STRING NULL
+    id_fazenda: INT [FK] NULL
+)
+
+ITEM_SOLICITACAO_COMPRA (
+    id_item: INT [PK]
+    id_solicitacao: INT [FK]
+    id_produto: INT [FK]
+    quantidade: DECIMAL
+)
+
+COTACAO_COMPRA (
+    id_cotacao: INT [PK]
+    id_solicitacao: INT [FK]
+    id_fornecedor: INT [FK]
+    status: status_cotacao_compra_enum
+    prazo_entrega_dias: INT
+    observacao: TEXT
+)
+
+ITEM_COTACAO_COMPRA (
+    id_item_cotacao: INT [PK]
+    id_cotacao: INT [FK]
+    id_produto: INT [FK]
+    quantidade: DECIMAL
+    preco_unitario: DECIMAL
+)
+
+NOTA_FISCAL_COMPRA (
+    id_nota_fiscal: INT [PK]
+    id_pedido: INT [FK]
+    id_fornecedor: INT [FK]
+    numero: STRING
+    serie: STRING
+    data_emissao: DATE
+    valor_total: DECIMAL
+    chave_acesso: STRING NULL
+)
+
+DETALHE_COMPRA_EQUIPAMENTO (
+    id_pedido: INT [PK, FK]
+    id_tipo_maquina: INT [FK]
+    patrimonio: STRING NULL
+    id_fazenda: INT [FK]
+    id_maquina: INT [FK] NULL
 )
 
 ITEM_PEDIDO_COMPRA (

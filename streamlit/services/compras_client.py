@@ -6,9 +6,11 @@ from datetime import date
 
 import requests
 
-from app.compras.enum import OrderStatus
+from app.compras.enum import OrderStatus, PurchaseRequestStatus, PurchaseType, QuotationStatus
 from app.compras.schemas.lookups import (
     CostCenterOptionSchema,
+    FarmOptionSchema,
+    MachineTypeOptionSchema,
     ProductOptionSchema,
     SupplierOptionSchema,
 )
@@ -26,6 +28,27 @@ from app.compras.schemas.purchase import (
     PurchaseCreateSchema,
     PurchaseReadSchema,
     PurchaseUpdateSchema,
+)
+from app.compras.schemas.purchase_invoice import (
+    PurchaseInvoiceCreateSchema,
+    PurchaseInvoiceReadSchema,
+    PurchaseInvoiceUpdateSchema,
+)
+from app.compras.schemas.purchase_request import (
+    ConvertRequestToOrderSchema,
+    PurchaseRequestCreateSchema,
+    PurchaseRequestReadSchema,
+    PurchaseRequestUpdateSchema,
+)
+from app.compras.schemas.purchase_request_item import (
+    PurchaseRequestItemCreateSchema,
+    PurchaseRequestItemReadSchema,
+)
+from app.compras.schemas.quotation_item import QuotationItemCreateSchema
+from app.compras.schemas.supplier_quotation import (
+    QuotationComparisonSchema,
+    SupplierQuotationCreateSchema,
+    SupplierQuotationReadSchema,
 )
 from app.compras.schemas.supplier import (
     SupplierCreateSchema,
@@ -58,6 +81,15 @@ _API_DETAIL_TO_PT: tuple[tuple[str, str], ...] = (
     ("CNPJ invalido", "Informe um CNPJ valido (14 digitos)."),
     ("nao encontrado na BrasilAPI", "CNPJ nao encontrado."),
     ("Could not query CNPJ on BrasilAPI", "Nao foi possivel consultar o CNPJ. Tente novamente."),
+    ("Purchase request not found", "Solicitacao nao encontrada."),
+    ("Purchase request item not found", "Item da solicitacao nao encontrado."),
+    ("Quotation not found", "Cotacao nao encontrada."),
+    ("Invoice not found", "Nota fiscal nao encontrada."),
+    ("Only approved requests", "Somente solicitacoes aprovadas permitem esta acao."),
+    ("already generated an order", "Esta solicitacao ja gerou um pedido."),
+    ("Equipment requests require", "Solicitacao de equipamento exige tipo de maquina e fazenda."),
+    ("Cannot transition request", "Transicao de status da solicitacao nao permitida."),
+    ("Winning quotation", "Nao e possivel excluir a cotacao vencedora."),
     ("foreign key", "Nao foi possivel excluir: ha registros vinculados."),
 )
 
@@ -128,7 +160,23 @@ class PurchasesClient:
         self._raise_for_api(response)
         return [CostCenterOptionSchema.model_validate(item) for item in response.json()]
 
-    # --- Suppliers ---
+    def list_farms(self) -> list[FarmOptionSchema]:
+        response = requests.get(
+            self._url("/purchases/lookups/farms"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return [FarmOptionSchema.model_validate(item) for item in response.json()]
+
+    def list_machine_types(self) -> list[MachineTypeOptionSchema]:
+        response = requests.get(
+            self._url("/purchases/lookups/machine-types"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return [
+            MachineTypeOptionSchema.model_validate(item) for item in response.json()
+        ]
+
+    # --- Purchase requests ---
 
     def list_suppliers_full(self) -> list[SupplierReadSchema]:
         response = requests.get(self._url("/purchases/suppliers"), timeout=self.timeout)
@@ -321,5 +369,183 @@ class PurchasesClient:
     def delete_purchase(self, purchase_id: int) -> None:
         response = requests.delete(
             self._url(f"/purchases/{purchase_id}"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+
+    def list_requests(self) -> list[PurchaseRequestReadSchema]:
+        response = requests.get(self._url("/purchases/requests"), timeout=self.timeout)
+        self._raise_for_api(response)
+        return [PurchaseRequestReadSchema.model_validate(i) for i in response.json()]
+
+    def get_request(self, request_id: int) -> PurchaseRequestReadSchema:
+        response = requests.get(
+            self._url(f"/purchases/requests/{request_id}"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return PurchaseRequestReadSchema.model_validate(response.json())
+
+    def create_request(
+        self,
+        *,
+        tipo_compra: PurchaseType,
+        itens: list[PurchaseRequestItemCreateSchema],
+        observacao: str | None = None,
+        id_tipo_maquina: int | None = None,
+        patrimonio: str | None = None,
+        id_fazenda: int | None = None,
+        data_solicitacao: date | None = None,
+        status: PurchaseRequestStatus = PurchaseRequestStatus.RASCUNHO,
+    ) -> PurchaseRequestReadSchema:
+        payload = PurchaseRequestCreateSchema(
+            tipo_compra=tipo_compra,
+            itens=itens,
+            observacao=observacao,
+            id_tipo_maquina=id_tipo_maquina,
+            patrimonio=patrimonio,
+            id_fazenda=id_fazenda,
+            data_solicitacao=data_solicitacao,
+            status=status,
+        )
+        response = requests.post(
+            self._url("/purchases/requests"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return PurchaseRequestReadSchema.model_validate(response.json())
+
+    def update_request(
+        self, request_id: int, payload: PurchaseRequestUpdateSchema
+    ) -> PurchaseRequestReadSchema:
+        response = requests.patch(
+            self._url(f"/purchases/requests/{request_id}"),
+            json=payload.model_dump(mode="json", exclude_unset=True),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return PurchaseRequestReadSchema.model_validate(response.json())
+
+    def delete_request(self, request_id: int) -> None:
+        response = requests.delete(
+            self._url(f"/purchases/requests/{request_id}"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+
+    def list_request_items(self, request_id: int) -> list[PurchaseRequestItemReadSchema]:
+        response = requests.get(
+            self._url(f"/purchases/requests/{request_id}/items"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return [
+            PurchaseRequestItemReadSchema.model_validate(i) for i in response.json()
+        ]
+
+    def add_request_item(
+        self,
+        request_id: int,
+        payload: PurchaseRequestItemCreateSchema,
+    ) -> PurchaseRequestItemReadSchema:
+        response = requests.post(
+            self._url(f"/purchases/requests/{request_id}/items"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return PurchaseRequestItemReadSchema.model_validate(response.json())
+
+    def delete_request_item(self, request_id: int, item_id: int) -> None:
+        response = requests.delete(
+            self._url(f"/purchases/requests/{request_id}/items/{item_id}"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+
+    def convert_request_to_order(
+        self, request_id: int, payload: ConvertRequestToOrderSchema
+    ) -> OrderReadSchema:
+        response = requests.post(
+            self._url(f"/purchases/requests/{request_id}/convert-to-order"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return OrderReadSchema.model_validate(response.json())
+
+    def get_quotation_comparison(self, request_id: int) -> QuotationComparisonSchema:
+        response = requests.get(
+            self._url(f"/purchases/requests/{request_id}/quotations/comparison"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return QuotationComparisonSchema.model_validate(response.json())
+
+    def list_quotations(self, request_id: int) -> list[SupplierQuotationReadSchema]:
+        response = requests.get(
+            self._url(f"/purchases/requests/{request_id}/quotations"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return [SupplierQuotationReadSchema.model_validate(i) for i in response.json()]
+
+    def create_quotation(
+        self,
+        request_id: int,
+        *,
+        id_fornecedor: int,
+        itens: list[QuotationItemCreateSchema],
+        prazo_entrega_dias: int | None = None,
+        observacao: str | None = None,
+    ) -> SupplierQuotationReadSchema:
+        payload = SupplierQuotationCreateSchema(
+            id_fornecedor=id_fornecedor,
+            itens=itens,
+            prazo_entrega_dias=prazo_entrega_dias,
+            observacao=observacao,
+        )
+        response = requests.post(
+            self._url(f"/purchases/requests/{request_id}/quotations"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return SupplierQuotationReadSchema.model_validate(response.json())
+
+    def list_quotation_items(self, quotation_id: int) -> list:
+        response = requests.get(
+            self._url(f"/purchases/quotations/{quotation_id}/items"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return response.json()
+
+    def select_winning_quotation(self, quotation_id: int) -> OrderReadSchema:
+        response = requests.post(
+            self._url(f"/purchases/quotations/{quotation_id}/select-winner"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return OrderReadSchema.model_validate(response.json())
+
+    def list_invoices(self, order_id: int) -> list[PurchaseInvoiceReadSchema]:
+        response = requests.get(
+            self._url(f"/purchases/orders/{order_id}/invoices"), timeout=self.timeout
+        )
+        self._raise_for_api(response)
+        return [PurchaseInvoiceReadSchema.model_validate(i) for i in response.json()]
+
+    def create_invoice(
+        self, order_id: int, payload: PurchaseInvoiceCreateSchema
+    ) -> PurchaseInvoiceReadSchema:
+        response = requests.post(
+            self._url(f"/purchases/orders/{order_id}/invoices"),
+            json=payload.model_dump(mode="json"),
+            timeout=self.timeout,
+        )
+        self._raise_for_api(response)
+        return PurchaseInvoiceReadSchema.model_validate(response.json())
+
+    def delete_invoice(self, invoice_id: int) -> None:
+        response = requests.delete(
+            self._url(f"/purchases/invoices/{invoice_id}"), timeout=self.timeout
         )
         self._raise_for_api(response)

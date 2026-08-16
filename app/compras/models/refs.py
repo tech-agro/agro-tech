@@ -66,3 +66,19 @@ class CentroCustoRef(Base):
 
     id_centro_custo: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+class FazendaRef(Base):
+    __tablename__ = "fazenda"
+    __table_args__ = {"extend_existing": True}
+
+    id_fazenda: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+class TipoMaquinaRef(Base):
+    __tablename__ = "tipo_maquina"
+    __table_args__ = {"extend_existing": True}
+
+    id_tipo_maquina: Mapped[int] = mapped_column(primary_key=True)
+    descricao: Mapped[str] = mapped_column(String(120), nullable=False)

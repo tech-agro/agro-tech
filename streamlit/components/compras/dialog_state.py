@@ -39,6 +39,25 @@ def open_dialog(scope: str, kind: str, entity_id: int | None = None) -> None:
     if scope == "fornecedores" and kind == "create":
         st.session_state.pop(f"_novo_fornecedor_cnpj_data_{scope}", None)
 
+    if scope == "solicitacoes":
+        if kind == "new":
+            for item in (
+                "new_request_items",
+                "new_request_items_editor",
+                "_init_new_request_items_editor",
+                "new_request_items_prev",
+            ):
+                st.session_state.pop(item, None)
+        if kind == "edit" and entity_id is not None:
+            prefix = f"edit_request_items_{entity_id}"
+            for item in (
+                prefix,
+                f"{prefix}_editor",
+                f"_init_{prefix}_editor",
+                f"{prefix}_prev",
+            ):
+                st.session_state.pop(item, None)
+
     st.session_state[key] = target
 
 
@@ -65,3 +84,13 @@ def clear_dialog_state(scope: str, entity_id: int | None = None) -> None:
 
     if scope == "fornecedores":
         st.session_state.pop(f"_novo_fornecedor_cnpj_data_{scope}", None)
+
+    if scope == "solicitacoes" and entity_id is not None:
+        prefix = f"edit_request_items_{entity_id}"
+        for item in (
+            prefix,
+            f"{prefix}_editor",
+            f"_init_{prefix}_editor",
+            f"{prefix}_prev",
+        ):
+            st.session_state.pop(item, None)

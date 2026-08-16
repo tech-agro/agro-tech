@@ -4,23 +4,39 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from app.compras.models.equipment_purchase_detail import EquipmentPurchaseDetailModel
 from app.compras.models.order import OrderModel
 from app.compras.models.order_item import OrderItemModel
 from app.compras.models.purchase import PurchaseModel
+from app.compras.models.purchase_invoice import PurchaseInvoiceModel
+from app.compras.models.purchase_request import PurchaseRequestModel
+from app.compras.models.purchase_request_item import PurchaseRequestItemModel
+from app.compras.models.quotation_item import QuotationItemModel
 from app.compras.models.refs import (
     CentroCustoRef,
+    FazendaRef,
     FornecedorRef,
     PessoaRef,
     ProdutoRef,
+    TipoMaquinaRef,
     UnidadeMedidaRef,
 )
 from app.compras.models.supplier_product import SupplierProductModel
+from app.compras.models.supplier_quotation import SupplierQuotationModel
 from app.compras.schemas.supplier import SupplierReadSchema
 from app.core.base_repository import BaseRepository
 from app.core.database import get_session
 
 # Register FK targets on SQLAlchemy metadata (shared tables owned elsewhere).
-_ = (PessoaRef, FornecedorRef, UnidadeMedidaRef, ProdutoRef, CentroCustoRef)
+_ = (
+    PessoaRef,
+    FornecedorRef,
+    UnidadeMedidaRef,
+    ProdutoRef,
+    CentroCustoRef,
+    FazendaRef,
+    TipoMaquinaRef,
+)
 
 
 def _supplier_read(
@@ -37,6 +53,10 @@ def _supplier_read(
 
 class OrderRepository(BaseRepository[OrderModel]):
     model = OrderModel
+
+    def get_by_solicitacao(self, request_id: int) -> OrderModel | None:
+        rows = self.list(filters={"id_solicitacao": request_id})
+        return rows[0] if rows else None
 
     def list_with_supplier_name(self) -> list[tuple[OrderModel, str | None]]:
         with get_session() as session:
@@ -120,6 +140,97 @@ class SupplierProductRepository(BaseRepository[SupplierProductModel]):
 
 class PurchaseRepository(BaseRepository[PurchaseModel]):
     model = PurchaseModel
+
+
+class PurchaseRequestRepository(BaseRepository[PurchaseRequestModel]):
+    model = PurchaseRequestModel
+
+
+class PurchaseRequestItemRepository(BaseRepository[PurchaseRequestItemModel]):
+    model = PurchaseRequestItemModel
+
+    def list_with_product_labels(
+        self, request_id: int
+    ) -> list[tuple[PurchaseRequestItemModel, str | None, str | None]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(
+                    PurchaseRequestItemModel,
+                    ProdutoRef.nome,
+                    UnidadeMedidaRef.sigla,
+                )
+                .select_from(PurchaseRequestItemModel)
+                .outerjoin(
+                    ProdutoRef,
+                    ProdutoRef.id_produto == PurchaseRequestItemModel.id_produto,
+                )
+                .outerjoin(
+                    UnidadeMedidaRef,
+                    UnidadeMedidaRef.id_unidade == ProdutoRef.id_unidade,
+                )
+                .where(PurchaseRequestItemModel.id_solicitacao == request_id)
+                .order_by(PurchaseRequestItemModel.id_item)
+            ).all()
+            result: list[tuple[PurchaseRequestItemModel, str | None, str | None]] = []
+            for item, nome, sigla in rows:
+                session.expunge(item)
+                sigla_value = sigla.value if sigla is not None else None
+                result.append((item, nome, sigla_value))
+            return result
+
+
+class SupplierQuotationRepository(BaseRepository[SupplierQuotationModel]):
+    model = SupplierQuotationModel
+
+    def list_with_supplier_name(
+        self, request_id: int
+    ) -> list[tuple[SupplierQuotationModel, str | None]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(SupplierQuotationModel, PessoaRef.nome)
+                .outerjoin(
+                    FornecedorRef,
+                    FornecedorRef.id_fornecedor == SupplierQuotationModel.id_fornecedor,
+                )
+                .outerjoin(PessoaRef, PessoaRef.id_pessoa == FornecedorRef.id_pessoa)
+                .where(SupplierQuotationModel.id_solicitacao == request_id)
+                .order_by(SupplierQuotationModel.id_cotacao)
+            ).all()
+            result: list[tuple[SupplierQuotationModel, str | None]] = []
+            for quotation, nome in rows:
+                session.expunge(quotation)
+                result.append((quotation, nome))
+            return result
+
+
+class QuotationItemRepository(BaseRepository[QuotationItemModel]):
+    model = QuotationItemModel
+
+    def list_with_product_labels(
+        self, quotation_id: int
+    ) -> list[tuple[QuotationItemModel, str | None]]:
+        with get_session() as session:
+            rows = session.execute(
+                select(QuotationItemModel, ProdutoRef.nome)
+                .outerjoin(
+                    ProdutoRef, ProdutoRef.id_produto == QuotationItemModel.id_produto
+                )
+                .where(QuotationItemModel.id_cotacao == quotation_id)
+                .order_by(QuotationItemModel.id_item_cotacao)
+            ).all()
+            result: list[tuple[QuotationItemModel, str | None]] = []
+            for item, nome in rows:
+                session.expunge(item)
+                result.append((item, nome))
+            return result
+
+
+class PurchaseInvoiceRepository(BaseRepository[PurchaseInvoiceModel]):
+    model = PurchaseInvoiceModel
+
+
+class EquipmentPurchaseDetailRepository(BaseRepository[EquipmentPurchaseDetailModel]):
+    model = EquipmentPurchaseDetailModel
 
 
 class SupplierRepository:
@@ -243,6 +354,22 @@ class PurchaseLookupRepository:
         with get_session() as session:
             rows = session.scalars(
                 select(CentroCustoRef).order_by(CentroCustoRef.nome)
+            ).all()
+            for row in rows:
+                session.expunge(row)
+            return list(rows)
+
+    def list_farms(self) -> list[FazendaRef]:
+        with get_session() as session:
+            rows = session.scalars(select(FazendaRef).order_by(FazendaRef.nome)).all()
+            for row in rows:
+                session.expunge(row)
+            return list(rows)
+
+    def list_machine_types(self) -> list[TipoMaquinaRef]:
+        with get_session() as session:
+            rows = session.scalars(
+                select(TipoMaquinaRef).order_by(TipoMaquinaRef.descricao)
             ).all()
             for row in rows:
                 session.expunge(row)

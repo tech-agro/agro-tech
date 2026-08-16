@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.compras.enum import OrderStatus
+from app.compras.enum import OrderStatus, PurchaseRequestStatus, PurchaseType
 from app.compras.schemas.lookups import ProductOptionSchema, SupplierOptionSchema
 
 STATUS_LABELS = {
@@ -11,6 +11,19 @@ STATUS_LABELS = {
     OrderStatus.PARCIALMENTE_ATENDIDO: "Parcialmente atendido",
     OrderStatus.ATENDIDO: "Atendido",
     OrderStatus.CANCELADO: "Cancelado",
+}
+
+REQUEST_STATUS_LABELS = {
+    PurchaseRequestStatus.RASCUNHO: "Rascunho",
+    PurchaseRequestStatus.ENVIADA: "Enviada",
+    PurchaseRequestStatus.APROVADA: "Aprovada",
+    PurchaseRequestStatus.REJEITADA: "Rejeitada",
+    PurchaseRequestStatus.CANCELADA: "Cancelada",
+}
+
+PURCHASE_TYPE_LABELS = {
+    PurchaseType.INSUMO: "Insumo",
+    PurchaseType.EQUIPAMENTO: "Equipamento",
 }
 
 
