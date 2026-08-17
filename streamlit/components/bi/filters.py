@@ -298,54 +298,83 @@ def apply_month_click(*, prefix: str, chart_key: str) -> None:
 def render_filter_bar(
     *,
     prefix: str,
-    safra_options: list[str],
-    product_options: list[str],
+    safra_options: list[str] | None,
+    product_options: list[str] | None,
     supplier_options: list[str] | None = None,
 ) -> FilterSelection:
+    """Render a compact filter bar.
+
+    If safra_options or product_options is None or empty, the corresponding selectbox
+    is omitted (useful for dashboards that don't need those dimensions).
+    """
     token = _reset_token(prefix)
+    has_safra = bool(safra_options)
+    has_product = bool(product_options)
     has_supplier = supplier_options is not None
-    widths = [3, 3, 3, 1] if has_supplier else [4, 4, 1]
+
+    # decide column widths dynamically based on visible controls
+    visible_fields = [has_safra, has_product, has_supplier]
+    field_count = sum(1 for v in visible_fields if v)
+    show_clear = field_count > 0
+    # when there are visible fields, reserve a small column for the clear button
+    if show_clear:
+        widths = [3] * field_count + [1]
+    else:
+        widths = [1]
     cols = st.columns(widths)
 
-    with cols[0]:
-        safra = _choice(
-            "Safra",
-            _TODAS,
-            safra_options,
-            key=f"{prefix}_safra_{token}",
-        )
-    with cols[1]:
-        product = _choice(
-            "Produto",
-            _TODOS,
-            product_options,
-            key=f"{prefix}_produto_{token}",
-        )
+    col_idx = 0
+    if has_safra:
+        with cols[col_idx]:
+            safra = _choice(
+                "Safra",
+                _TODAS,
+                safra_options or [],
+                key=f"{prefix}_safra_{token}",
+            )
+        col_idx += 1
+    else:
+        safra = None
+
+    if has_product:
+        with cols[col_idx]:
+            product = _choice(
+                "Produto",
+                _TODOS,
+                product_options or [],
+                key=f"{prefix}_produto_{token}",
+            )
+        col_idx += 1
+    else:
+        product = None
 
     if has_supplier:
-        with cols[2]:
+        with cols[col_idx]:
             supplier = _choice(
                 "Fornecedor",
                 _TODOS,
                 supplier_options or [],
                 key=f"{prefix}_fornecedor_{token}",
             )
-        clear_col = cols[3]
+        # clear column is the last column
+        clear_col = cols[-1] if show_clear else None
     else:
         supplier = None
-        clear_col = cols[2]
+        clear_col = cols[-1] if show_clear else None
 
-    with clear_col:
-        st.caption("\u00a0")
-        if st.button(
-            "Limpar",
-            use_container_width=True,
-            icon=":material/filter_alt_off:",
-            key=f"{prefix}_limpar_{token}",
-            help="Volta os filtros para Todas/Todos e o periodo para 90 dias.",
-        ):
-            _clear_filters(prefix)
+    if show_clear and clear_col is not None:
+        with clear_col:
+            st.caption("\u00a0")
+            if st.button(
+                "Limpar",
+                use_container_width=True,
+                icon=":material/filter_alt_off:",
+                key=f"{prefix}_limpar_{token}",
+                help="Volta os filtros para Todas/Todos e o periodo para 90 dias.",
+            ):
+                _clear_filters(prefix)
 
+    # Period control always shown
     periodo_key = f"{prefix}_periodo_{token}"
     custom_key = f"{prefix}_data_custom_{token}"
     periodo = st.segmented_control(

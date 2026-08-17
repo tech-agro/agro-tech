@@ -33,6 +33,9 @@ def _cores() -> tuple[str, str]:
     return (_TEAL_DARK, _AMBER_DARK) if _is_dark() else (_TEAL_LIGHT, _AMBER_LIGHT)
 
 
+from components.bi.widgets import fmt_brl
+
+
 def render_kpis(contas_pagar: list, contas_receber: list) -> None:
     a_receber = sum(float(c.saldo) for c in contas_receber if c.status in _ABERTOS_RECEBER)
     a_pagar = sum(float(c.saldo) for c in contas_pagar if c.status in _ABERTOS_PAGAR)
@@ -40,10 +43,11 @@ def render_kpis(contas_pagar: list, contas_receber: list) -> None:
     pago = sum(float(c.valor) - float(c.saldo) for c in contas_pagar)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("A receber (em aberto)", _brl(a_receber))
-    col2.metric("A pagar (em aberto)", _brl(a_pagar))
-    col3.metric("Saldo projetado", _brl(a_receber - a_pagar))
-    col4.metric("Já recebido / pago", f"{_brl(recebido)} / {_brl(pago)}")
+    col1.metric("A receber (em aberto)", fmt_brl(a_receber))
+    col2.metric("A pagar (em aberto)", fmt_brl(a_pagar))
+    col3.metric("Saldo projetado", fmt_brl(a_receber - a_pagar))
+    # Use shared formatting helper to avoid formatting inconsistencies
+    col4.metric("Já recebido / pago", f"{fmt_brl(recebido)} / {fmt_brl(pago)}")
 
 
 def render_fluxo_chart(fluxo: list) -> None:
