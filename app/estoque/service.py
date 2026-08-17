@@ -1233,8 +1233,12 @@ class EstoqueService:
 
     def list_produto_options(self) -> list[ProdutoOptionSchema]:
         return [
-            ProdutoOptionSchema(id_produto=id_produto, nome=nome)
-            for id_produto, nome in self.lookup_repo.list_produtos()
+            ProdutoOptionSchema(
+                id_produto=id_produto,
+                nome=nome,
+                unidade_sigla=unidade_sigla,
+            )
+            for id_produto, nome, unidade_sigla in self.lookup_repo.list_produtos()
         ]
 
     def list_colheita_options(self) -> list[ColheitaOptionSchema]:

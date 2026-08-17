@@ -93,6 +93,20 @@ pages = {
     "Inteligencia": [
         st.Page("pages/Inteligencia.py", title="Inteligencia", icon=":material/analytics:"),
     ],
+    "BI": [
+        st.Page(
+            "pages/bi/Estoque.py",
+            title="Estoque",
+            icon=":material/inventory_2:",
+            url_path="bi-estoque",
+        ),
+        st.Page(
+            "pages/bi/Compras.py",
+            title="Compras",
+            icon=":material/shopping_cart:",
+            url_path="bi-compras",
+        ),
+    ],
 }
 
 pg = st.navigation(pages)

@@ -284,6 +284,12 @@ class PurchasesClient:
         self._raise_for_api(response)
         return [OrderItemReadSchema.model_validate(item) for item in response.json()]
 
+    def list_all_order_items(self) -> list[OrderItemReadSchema]:
+        items: list[OrderItemReadSchema] = []
+        for order in self.list_orders():
+            items.extend(self.list_items(order.id_pedido))
+        return items
+
     def add_item(
         self,
         order_id: int,
