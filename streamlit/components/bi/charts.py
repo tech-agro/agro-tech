@@ -29,12 +29,14 @@ def bar_chart(
     title: str | None = None,
     color: str | None = None,
     color_map: dict[str, str] | None = None,
+    category_orders: dict[str, list[str]] | None = None,
     hover_data: list[str] | None = None,
     x_title: str | None = None,
     y_title: str | None = None,
     log_y: bool = False,
     height: int = 320,
     select_key: str | None = None,
+    barmode: str | None = None,
 ) -> None:
     if df.empty:
         _empty("Sem dados para exibir.")
@@ -46,6 +48,7 @@ def bar_chart(
         y=y,
         color=color,
         color_discrete_map=color_map,
+        category_orders=category_orders,
         hover_data=hover_data,
         title=title,
         template=_template(),
@@ -61,6 +64,8 @@ def bar_chart(
         legend_title=None,
         showlegend=color is not None,
     )
+    if barmode is not None:
+        fig.update_layout(barmode=barmode)
     fig.update_xaxes(tickangle=-30)
     kwargs: dict = {
         "use_container_width": True,

@@ -16,8 +16,8 @@ from app.integrations.schemas import MarketPriceData
 _COMMODITY_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("boi_gordo_cepea_sp", "Boi Gordo CEPEA/SP", "R$/arroba"),
     ("vaca_gorda", "Vaca Gorda", "R$/arroba"),
-    ("soja", "Soja", "R$/saca"),
-    ("milho", "Milho", "R$/saca"),
+    ("soja", "Soja", "Reais/saca"),
+    ("milho", "Milho", "Reais/saca"),
     ("bezerro_ms", "Bezerro MS", "R$/cabeça"),
 )
 

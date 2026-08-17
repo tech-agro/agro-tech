@@ -69,14 +69,14 @@ def test_fetch_maps_all_commodities_to_market_price_data(client: AgroDocClient) 
         MarketPriceData(
             product="Soja",
             price=Decimal("128.00"),
-            unit="R$/saca",
+            unit="Reais/saca",
             source="CEPEA/ESALQ",
             updated_at="2026-04-18T09:30:00-04:00",
         ),
         MarketPriceData(
             product="Milho",
             price=Decimal("66.81"),
-            unit="R$/saca",
+            unit="Reais/saca",
             source="CEPEA/ESALQ",
             updated_at="2026-04-18T09:30:00-04:00",
         ),

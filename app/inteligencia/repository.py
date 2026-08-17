@@ -6,14 +6,27 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, String, func, select
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import func, select
 
-from app.core.base import Base
 from app.core.base_repository import BaseRepository
 from app.core.database import get_session
+from app.financeiro.models import ContaPagarModel
+from app.fitossanidade.enum import SEVERITY_RANK
+from app.fitossanidade.models.agent_occurrence import AgentOccurrenceModel
+from app.fitossanidade.models.control import ControlModel
+from app.fitossanidade.models.harmful_agent import HarmfulAgentModel
+from app.fitossanidade.models.pesticide_application import PesticideApplicationModel
 from app.inteligencia.models import IndicadorModel, MedicaoIndicadorModel
+from app.inteligencia.refs import (
+    ColheitaRef,
+    CulturaRef,
+    PlanejamentoSafraRef,
+    PlantioRef,
+    SafraRef,
+    TalhaoRef,
+)
 from app.inteligencia.schemas import (
+    CustoFitossanidadeTalhaoSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -21,16 +34,9 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
+    OcorrenciaFitossanidadeSchema,
+    ProdutividadeTalhaoSchema,
 )
-
-
-class SafraRef(Base):
-    """Stub minimo da tabela safra (modulo producao)."""
-
-    __tablename__ = "safra"
-
-    id_safra: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    nome: Mapped[str] = mapped_column(String(120), nullable=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,6 +333,234 @@ def _to_decimal(valor: object | None) -> Decimal | None:
     if valor is None:
         return None
     return Decimal(str(valor))
+
+
+class ProdutividadeRepository:
+    """Produtividade (kg/ha) planejada x realizada por talhao/safra."""
+
+    def listar(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[ProdutividadeTalhaoSchema]:
+        with get_session() as session:
+            colhido = (
+                select(
+                    PlantioRef.id_talhao.label("id_talhao"),
+                    func.sum(ColheitaRef.quantidade_colhida).label("total_colhido"),
+                )
+                .join(ColheitaRef, ColheitaRef.id_plantio == PlantioRef.id_plantio)
+                .group_by(PlantioRef.id_talhao)
+                .subquery()
+            )
+            query = (
+                select(
+                    TalhaoRef.id_talhao,
+                    TalhaoRef.nome,
+                    SafraRef.id_safra,
+                    SafraRef.nome,
+                    SafraRef.ano,
+                    CulturaRef.nome,
+                    TalhaoRef.area_hectares,
+                    PlanejamentoSafraRef.meta_produtividade,
+                    PlanejamentoSafraRef.area_planejada,
+                    colhido.c.total_colhido,
+                )
+                .select_from(TalhaoRef)
+                .join(SafraRef, SafraRef.id_safra == TalhaoRef.id_safra)
+                .outerjoin(
+                    PlanejamentoSafraRef,
+                    (PlanejamentoSafraRef.id_talhao == TalhaoRef.id_talhao)
+                    & (PlanejamentoSafraRef.id_safra == TalhaoRef.id_safra),
+                )
+                .outerjoin(CulturaRef, CulturaRef.id_cultura == PlanejamentoSafraRef.id_cultura)
+                .outerjoin(colhido, colhido.c.id_talhao == TalhaoRef.id_talhao)
+                .order_by(SafraRef.ano, SafraRef.nome, TalhaoRef.nome)
+            )
+            if id_safra is not None:
+                query = query.where(TalhaoRef.id_safra == id_safra)
+            if id_talhao is not None:
+                query = query.where(TalhaoRef.id_talhao == id_talhao)
+
+            rows = session.execute(query).all()
+            resultado: list[ProdutividadeTalhaoSchema] = []
+            for (
+                id_talhao_row,
+                talhao_nome,
+                id_safra_row,
+                safra_nome,
+                safra_ano,
+                cultura_nome,
+                area_hectares,
+                meta_produtividade,
+                area_planejada,
+                total_colhido,
+            ) in rows:
+                area_referencia = area_planejada or area_hectares
+                realizado = None
+                if total_colhido is not None and area_referencia:
+                    realizado = (Decimal(str(total_colhido)) / Decimal(str(area_referencia))).quantize(
+                        Decimal("0.01")
+                    )
+                variacao = None
+                if realizado is not None and meta_produtividade:
+                    meta_decimal = Decimal(str(meta_produtividade))
+                    variacao = (
+                        (realizado - meta_decimal) / meta_decimal * 100
+                    ).quantize(Decimal("0.01"))
+                resultado.append(
+                    ProdutividadeTalhaoSchema(
+                        id_talhao=id_talhao_row,
+                        talhao_nome=talhao_nome,
+                        id_safra=id_safra_row,
+                        safra_nome=safra_nome,
+                        safra_ano=safra_ano,
+                        cultura_nome=cultura_nome,
+                        area_hectares=_to_decimal(area_hectares),
+                        meta_produtividade=_to_decimal(meta_produtividade),
+                        quantidade_colhida_total=_to_decimal(total_colhido),
+                        produtividade_realizada=realizado,
+                        variacao_percentual=variacao,
+                    )
+                )
+            return resultado
+
+
+class FitossanidadeBiRepository:
+    """Custo de defensivos e ocorrencias por talhao/safra (leitura para BI)."""
+
+    def custos_por_talhao(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[CustoFitossanidadeTalhaoSchema]:
+        with get_session() as session:
+            query = (
+                select(
+                    TalhaoRef.id_talhao,
+                    TalhaoRef.nome,
+                    SafraRef.id_safra,
+                    SafraRef.nome,
+                    SafraRef.ano,
+                    func.count(func.distinct(PesticideApplicationModel.id_aplicacao)),
+                    func.coalesce(func.sum(ContaPagarModel.valor), 0),
+                )
+                .select_from(TalhaoRef)
+                .join(SafraRef, SafraRef.id_safra == TalhaoRef.id_safra)
+                .outerjoin(PlantioRef, PlantioRef.id_talhao == TalhaoRef.id_talhao)
+                .outerjoin(ControlModel, ControlModel.id_plantio == PlantioRef.id_plantio)
+                .outerjoin(
+                    PesticideApplicationModel,
+                    PesticideApplicationModel.id_controle == ControlModel.id_controle,
+                )
+                .outerjoin(
+                    ContaPagarModel,
+                    ContaPagarModel.id_aplicacao == PesticideApplicationModel.id_aplicacao,
+                )
+                .group_by(
+                    TalhaoRef.id_talhao, TalhaoRef.nome, SafraRef.id_safra, SafraRef.nome, SafraRef.ano
+                )
+                .order_by(SafraRef.ano, SafraRef.nome, TalhaoRef.nome)
+            )
+            if id_safra is not None:
+                query = query.where(TalhaoRef.id_safra == id_safra)
+            if id_talhao is not None:
+                query = query.where(TalhaoRef.id_talhao == id_talhao)
+
+            rows = session.execute(query).all()
+            return [
+                CustoFitossanidadeTalhaoSchema(
+                    id_talhao=id_talhao_row,
+                    talhao_nome=talhao_nome,
+                    id_safra=id_safra_row,
+                    safra_nome=safra_nome,
+                    safra_ano=safra_ano,
+                    total_aplicacoes=int(total_aplicacoes or 0),
+                    custo_total=_to_decimal(custo_total) or Decimal("0"),
+                )
+                for (
+                    id_talhao_row,
+                    talhao_nome,
+                    id_safra_row,
+                    safra_nome,
+                    safra_ano,
+                    total_aplicacoes,
+                    custo_total,
+                ) in rows
+            ]
+
+    def ocorrencias_por_severidade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[OcorrenciaFitossanidadeSchema]:
+        with get_session() as session:
+            query = (
+                select(
+                    SafraRef.id_safra,
+                    SafraRef.nome,
+                    SafraRef.ano,
+                    TalhaoRef.id_talhao,
+                    TalhaoRef.nome,
+                    ControlModel.nivel_severidade,
+                    HarmfulAgentModel.nome_comum,
+                    func.count(AgentOccurrenceModel.id_ocorrencia),
+                )
+                .select_from(AgentOccurrenceModel)
+                .join(ControlModel, ControlModel.id_controle == AgentOccurrenceModel.id_controle)
+                .join(HarmfulAgentModel, HarmfulAgentModel.id_agente == AgentOccurrenceModel.id_agente)
+                .join(PlantioRef, PlantioRef.id_plantio == ControlModel.id_plantio)
+                .join(TalhaoRef, TalhaoRef.id_talhao == PlantioRef.id_talhao)
+                .join(SafraRef, SafraRef.id_safra == TalhaoRef.id_safra)
+                .group_by(
+                    SafraRef.id_safra,
+                    SafraRef.nome,
+                    SafraRef.ano,
+                    TalhaoRef.id_talhao,
+                    TalhaoRef.nome,
+                    ControlModel.nivel_severidade,
+                    HarmfulAgentModel.nome_comum,
+                )
+            )
+            if id_safra is not None:
+                query = query.where(TalhaoRef.id_safra == id_safra)
+            if id_talhao is not None:
+                query = query.where(TalhaoRef.id_talhao == id_talhao)
+
+            rows = session.execute(query).all()
+            resultado = [
+                OcorrenciaFitossanidadeSchema(
+                    id_safra=id_safra_row,
+                    safra_nome=safra_nome,
+                    safra_ano=safra_ano,
+                    id_talhao=id_talhao_row,
+                    talhao_nome=talhao_nome,
+                    nivel_severidade=nivel_severidade,
+                    agente_nome=agente_nome,
+                    total_ocorrencias=int(total or 0),
+                )
+                for (
+                    id_safra_row,
+                    safra_nome,
+                    safra_ano,
+                    id_talhao_row,
+                    talhao_nome,
+                    nivel_severidade,
+                    agente_nome,
+                    total,
+                ) in rows
+            ]
+            resultado.sort(
+                key=lambda item: (
+                    item.safra_nome,
+                    item.talhao_nome,
+                    -SEVERITY_RANK.get(item.nivel_severidade or "", 0),
+                )
+            )
+            return resultado
 
 
 class InteligenciaRepository(IndicadorRepository):

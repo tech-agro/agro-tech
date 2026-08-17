@@ -18,6 +18,7 @@ from app.inteligencia.schemas import (
     ClimaSyncResponseSchema,
     CotacaoSyncRequestSchema,
     CotacaoSyncResponseSchema,
+    CustoFitossanidadeTalhaoSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -25,6 +26,8 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
+    OcorrenciaFitossanidadeSchema,
+    ProdutividadeTalhaoSchema,
 )
 from app.inteligencia.service import InteligenciaService
 from app.integrations.exceptions import IntegrationError
@@ -88,6 +91,19 @@ class InteligenciaController:
             "/indicadores/cotacao/sync",
             response_model=CotacaoSyncResponseSchema,
         )(self.sync_cotacao)
+
+        self.router.get(
+            "/produtividade",
+            response_model=list[ProdutividadeTalhaoSchema],
+        )(self.listar_produtividade)
+        self.router.get(
+            "/fitossanidade/custos",
+            response_model=list[CustoFitossanidadeTalhaoSchema],
+        )(self.listar_custos_fitossanidade)
+        self.router.get(
+            "/fitossanidade/ocorrencias",
+            response_model=list[OcorrenciaFitossanidadeSchema],
+        )(self.listar_ocorrencias_fitossanidade)
 
         self.router.post("/medicoes", response_model=MedicaoIndicadorReadSchema)(
             self.create_medicao
@@ -242,6 +258,40 @@ class InteligenciaController:
     def delete_medicao(self, id_medicao: int) -> None:
         try:
             self.service.excluir_medicao(id_medicao)
+        except InteligenciaError as exc:
+            raise self._map_error(exc) from exc
+
+    def listar_produtividade(
+        self,
+        id_safra: int | None = Query(default=None),
+        id_talhao: int | None = Query(default=None),
+    ) -> list[ProdutividadeTalhaoSchema]:
+        try:
+            return self.service.listar_produtividade(id_safra=id_safra, id_talhao=id_talhao)
+        except InteligenciaError as exc:
+            raise self._map_error(exc) from exc
+
+    def listar_custos_fitossanidade(
+        self,
+        id_safra: int | None = Query(default=None),
+        id_talhao: int | None = Query(default=None),
+    ) -> list[CustoFitossanidadeTalhaoSchema]:
+        try:
+            return self.service.listar_custos_fitossanidade(
+                id_safra=id_safra, id_talhao=id_talhao
+            )
+        except InteligenciaError as exc:
+            raise self._map_error(exc) from exc
+
+    def listar_ocorrencias_fitossanidade(
+        self,
+        id_safra: int | None = Query(default=None),
+        id_talhao: int | None = Query(default=None),
+    ) -> list[OcorrenciaFitossanidadeSchema]:
+        try:
+            return self.service.listar_ocorrencias_fitossanidade(
+                id_safra=id_safra, id_talhao=id_talhao
+            )
         except InteligenciaError as exc:
             raise self._map_error(exc) from exc
 

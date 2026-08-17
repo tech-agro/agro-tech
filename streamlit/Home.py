@@ -106,6 +106,18 @@ pages = {
             icon=":material/shopping_cart:",
             url_path="bi-compras",
         ),
+        st.Page(
+            "pages/bi/Producao.py",
+            title="Produtividade",
+            icon=":material/agriculture:",
+            url_path="bi-producao",
+        ),
+        st.Page(
+            "pages/bi/Fitossanidade.py",
+            title="Fitossanidade",
+            icon=":material/eco:",
+            url_path="bi-fitossanidade",
+        ),
     ],
 }
 

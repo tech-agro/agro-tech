@@ -15,6 +15,7 @@ from app.inteligencia.schemas import (
     ClimaSyncResponseSchema,
     CotacaoSyncRequestSchema,
     CotacaoSyncResponseSchema,
+    CustoFitossanidadeTalhaoSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -22,6 +23,8 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
+    OcorrenciaFitossanidadeSchema,
+    ProdutividadeTalhaoSchema,
 )
 from app.integrations.schemas import MarketPriceData, WeatherData
 from services.identity_client import SESSION_KEY_TOKEN
@@ -262,3 +265,60 @@ class InteligenciaClient:
         )
         self._raise_for_api(response)
         return CotacaoSyncResponseSchema.model_validate(response.json())
+
+    # --- Produtividade (planejado x realizado) ---
+
+    def listar_produtividade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[ProdutividadeTalhaoSchema]:
+        params = {
+            k: v
+            for k, v in {"id_safra": id_safra, "id_talhao": id_talhao}.items()
+            if v is not None
+        }
+        response = self._request("GET", "/inteligencia/produtividade", params=params)
+        self._raise_for_api(response)
+        return [ProdutividadeTalhaoSchema.model_validate(item) for item in response.json()]
+
+    # --- Fitossanidade (custo e ocorrencias) ---
+
+    def listar_custos_fitossanidade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[CustoFitossanidadeTalhaoSchema]:
+        params = {
+            k: v
+            for k, v in {"id_safra": id_safra, "id_talhao": id_talhao}.items()
+            if v is not None
+        }
+        response = self._request(
+            "GET", "/inteligencia/fitossanidade/custos", params=params
+        )
+        self._raise_for_api(response)
+        return [
+            CustoFitossanidadeTalhaoSchema.model_validate(item) for item in response.json()
+        ]
+
+    def listar_ocorrencias_fitossanidade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[OcorrenciaFitossanidadeSchema]:
+        params = {
+            k: v
+            for k, v in {"id_safra": id_safra, "id_talhao": id_talhao}.items()
+            if v is not None
+        }
+        response = self._request(
+            "GET", "/inteligencia/fitossanidade/ocorrencias", params=params
+        )
+        self._raise_for_api(response)
+        return [
+            OcorrenciaFitossanidadeSchema.model_validate(item) for item in response.json()
+        ]

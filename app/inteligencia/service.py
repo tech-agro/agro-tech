@@ -17,12 +17,15 @@ from app.integrations.agrodoc import AgroDocClient
 from app.integrations.open_meteo import OpenMeteoClient
 from app.integrations.schemas import MarketPriceData, WeatherData
 from app.inteligencia.repository import (
+    FitossanidadeBiRepository,
     IndicadorFilters,
     IndicadorRepository,
     MedicaoIndicadorFilters,
     MedicaoIndicadorRepository,
+    ProdutividadeRepository,
 )
 from app.inteligencia.schemas import (
+    CustoFitossanidadeTalhaoSchema,
     IndicadorAgregacaoSchema,
     IndicadorCreateSchema,
     IndicadorReadSchema,
@@ -30,6 +33,8 @@ from app.inteligencia.schemas import (
     MedicaoIndicadorCreateSchema,
     MedicaoIndicadorReadSchema,
     MedicaoIndicadorUpdateSchema,
+    OcorrenciaFitossanidadeSchema,
+    ProdutividadeTalhaoSchema,
 )
 
 
@@ -40,9 +45,13 @@ class InteligenciaService:
         self,
         indicador_repo: IndicadorRepository | None = None,
         medicao_repo: MedicaoIndicadorRepository | None = None,
+        produtividade_repo: ProdutividadeRepository | None = None,
+        fitossanidade_bi_repo: FitossanidadeBiRepository | None = None,
     ) -> None:
         self.indicador_repo = indicador_repo or IndicadorRepository()
         self.medicao_repo = medicao_repo or MedicaoIndicadorRepository()
+        self.produtividade_repo = produtividade_repo or ProdutividadeRepository()
+        self.fitossanidade_bi_repo = fitossanidade_bi_repo or FitossanidadeBiRepository()
 
     # --- Indicadores ---
 
@@ -205,6 +214,44 @@ class InteligenciaService:
             id_safra=id_safra,
             data_inicio=data_inicio,
             data_fim=data_fim,
+        )
+
+    # --- Produtividade (planejado x realizado) ---
+
+    def listar_produtividade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[ProdutividadeTalhaoSchema]:
+        if id_safra is not None and not self.medicao_repo.exists_safra(id_safra):
+            raise InteligenciaNotFoundError(f"Safra {id_safra} nao encontrada.")
+        return self.produtividade_repo.listar(id_safra=id_safra, id_talhao=id_talhao)
+
+    # --- Fitossanidade (custo e ocorrencias) ---
+
+    def listar_custos_fitossanidade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[CustoFitossanidadeTalhaoSchema]:
+        if id_safra is not None and not self.medicao_repo.exists_safra(id_safra):
+            raise InteligenciaNotFoundError(f"Safra {id_safra} nao encontrada.")
+        return self.fitossanidade_bi_repo.custos_por_talhao(
+            id_safra=id_safra, id_talhao=id_talhao
+        )
+
+    def listar_ocorrencias_fitossanidade(
+        self,
+        *,
+        id_safra: int | None = None,
+        id_talhao: int | None = None,
+    ) -> list[OcorrenciaFitossanidadeSchema]:
+        if id_safra is not None and not self.medicao_repo.exists_safra(id_safra):
+            raise InteligenciaNotFoundError(f"Safra {id_safra} nao encontrada.")
+        return self.fitossanidade_bi_repo.ocorrencias_por_severidade(
+            id_safra=id_safra, id_talhao=id_talhao
         )
 
     def _validar_medicao(

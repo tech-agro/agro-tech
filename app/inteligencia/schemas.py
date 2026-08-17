@@ -85,3 +85,44 @@ class IndicadorAgregacaoSchema(BaseModel):
     valor_minimo: Decimal | None = None
     valor_maximo: Decimal | None = None
     valor_soma: Decimal | None = None
+
+
+class ProdutividadeTalhaoSchema(BaseModel):
+    """Produtividade (kg/ha) planejada x realizada de um talhao em uma safra."""
+
+    id_talhao: int
+    talhao_nome: str
+    id_safra: int
+    safra_nome: str
+    safra_ano: int
+    cultura_nome: str | None = None
+    area_hectares: Decimal | None = None
+    meta_produtividade: Decimal | None = None
+    quantidade_colhida_total: Decimal | None = None
+    produtividade_realizada: Decimal | None = None
+    variacao_percentual: Decimal | None = None
+
+
+class CustoFitossanidadeTalhaoSchema(BaseModel):
+    """Custo de defensivos aplicados em um talhao em uma safra."""
+
+    id_talhao: int
+    talhao_nome: str
+    id_safra: int
+    safra_nome: str
+    safra_ano: int
+    total_aplicacoes: int
+    custo_total: Decimal
+
+
+class OcorrenciaFitossanidadeSchema(BaseModel):
+    """Contagem de ocorrencias de agentes nocivos por severidade e talhao."""
+
+    id_safra: int
+    safra_nome: str
+    safra_ano: int
+    id_talhao: int
+    talhao_nome: str
+    nivel_severidade: str | None
+    agente_nome: str | None
+    total_ocorrencias: int
