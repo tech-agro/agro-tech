@@ -187,4 +187,6 @@ def render_criticas_table(contas_pagar: list, contas_receber: list) -> None:
         return
 
     df = pd.DataFrame(linhas).sort_values("Dias em atraso", ascending=False)
+    df["Vencimento"] = pd.to_datetime(df["Vencimento"]).dt.strftime("%d/%m/%Y")
+    df["Saldo"] = df["Saldo"].astype(float)
     st.dataframe(df, use_container_width=True, hide_index=True)

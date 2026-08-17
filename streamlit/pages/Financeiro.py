@@ -42,7 +42,9 @@ from services.financeiro_client import (
     FinanceiroApiError,
     FinanceiroClient,
 )
+from services.identity_client import require_login
 
+require_login()
 
 setup_page(
     "Financeiro",
