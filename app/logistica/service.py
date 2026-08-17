@@ -519,9 +519,9 @@ class LogisticsService:
     def _suggest_loads_from_sale(self, sale_id: int) -> list[LoadCreateSchema]:
         """Comercial: sugestão de cargas baseada no picking da venda."""
         try:
-            from app.comercial.service import CommercialService
+            from app.comercial.service import ComercialService
 
-            suggestions = CommercialService().list_picking_suggestion(sale_id)
+            suggestions = ComercialService().list_picking_suggestion(sale_id)
         except Exception as exc:
             raise LogisticsError(
                 "Could not suggest loads from sale. Confirm the sale first."
@@ -988,9 +988,9 @@ class LogisticsService:
         if operation is None or operation.id_venda is None:
             return
         try:
-            from app.comercial.service import CommercialService
+            from app.comercial.service import ComercialService
 
-            CommercialService().register_shipment_status(
+            ComercialService().register_shipment_status(
                 operation.id_venda, shipped=shipped, delivered=delivered
             )
         except Exception:
@@ -1021,15 +1021,80 @@ class LogisticsService:
             return
 
     def receber_venda_confirmada(self, id_venda: int) -> None:
-        """Chamado pela Comercial quando uma venda e confirmada.
+        """Recebe o hook da Comercial quando uma venda é confirmada e abre uma
+        operação logística pré-preenchida vinculada à venda.
 
-        Implementacao futura:
-            - abrir uma `operacao_logistica` (ordem de carregamento) vinculada
-              a venda, com veiculo e rota a definir.
-
-        Mantido como placeholder ate a implementacao do modulo Logistica.
+        Comportamento:
+        - Idempotente: não cria duplicata se já existir operação para a venda.
+        - Seleciona um veículo e locais padrão via lookups (preferindo armazém
+          como origem e cliente como destino quando disponíveis).
+        - Solicita sugestões de cargas do Comercial (suggest_loads_from_sale=True)
+        - Silencia exceções e falhas não críticas para não interromper o fluxo
+          da confirmação da venda.
         """
-        return None
+        # Idempotência: não criar operação se já existir para esta venda
+        try:
+            existing = self.operation_repo.list(filters={"id_venda": id_venda})
+            if existing:
+                return None
+        except Exception:
+            # Se falhar ao checar, evitar duplicar por segurança: seguir e tentar criar
+            pass
+
+        # Seleciona veículo e locais via lookups
+        try:
+            vehicles = self.lookup_repo.list_vehicles()
+            if not vehicles:
+                return None
+            id_veiculo = vehicles[0].id_veiculo
+        except Exception:
+            return None
+
+        try:
+            from app.logistica.enum import LocationType
+
+            locations = self.lookup_repo.list_locations()
+            id_origem = None
+            id_destino = None
+            # Preferir origem em ARMAZEM/FAZENDA/CENTRO_DISTRIBUICAO
+            preferred_origins = {
+                LocationType.ARMAZEM,
+                LocationType.FAZENDA,
+                LocationType.CENTRO_DISTRIBUICAO,
+            }
+            for loc in locations:
+                # loc is a LogisticsLocationModel (lookup returns model instances)
+                if id_origem is None and getattr(loc, "tipo", None) in preferred_origins:
+                    id_origem = getattr(loc, "id_local_logistico", None)
+                if id_destino is None and getattr(loc, "tipo", None) == LocationType.CLIENTE:
+                    id_destino = getattr(loc, "id_local_logistico", None)
+            if id_origem is None and locations:
+                id_origem = getattr(locations[0], "id_local_logistico", None)
+            if id_destino is None:
+                for loc in locations:
+                    candidate = getattr(loc, "id_local_logistico", None)
+                    if candidate is not None and candidate != id_origem:
+                        id_destino = candidate
+                        break
+            if id_origem is None or id_destino is None:
+                return None
+        except Exception:
+            return None
+
+        # Monta payload mínimo e delega a criação (usando sugestão de cargas)
+        try:
+            payload = OperationCreateSchema(
+                id_veiculo=id_veiculo,
+                id_origem=id_origem,
+                id_destino=id_destino,
+                id_venda=id_venda,
+                suggest_loads_from_sale=True,
+            )
+            # create_operation irá gerar cargas sugeridas e as expedicoes iniciais
+            self.create_operation(payload)
+        except Exception:
+            # Falhas aqui não devem bloquear o fluxo de venda; registrar/ignorar.
+            return None
 
     def _notify_intelligence(
         self, operation_id: int, *, evento: str, indicador_nome: str

@@ -464,6 +464,45 @@ class ComercialService:
         itens = self.repository.list_itens_por_venda(id_venda)
         return VendaComItens(**venda.model_dump(), itens=itens)
 
+    def list_picking_suggestion(self, id_venda: int) -> list[dict]:
+        """Retorna o picking de uma venda como sugestao de cargas para logistica."""
+        venda = self.repository.get_venda_by_id(id_venda)
+        if venda is None:
+            return []
+
+        itens = self.repository.list_itens_por_venda(id_venda)
+        sugestoes: list[dict] = []
+        for item in itens:
+            if item.id_lote is None:
+                continue
+            sugestoes.append(
+                {
+                    "id_lote": item.id_lote,
+                    "id_item_venda": item.id_item_venda,
+                    "quantidade": float(item.quantidade),
+                }
+            )
+        return sugestoes
+
+    def register_shipment_status(
+        self,
+        id_venda: int,
+        *,
+        shipped: bool = False,
+        delivered: bool = False,
+    ) -> bool:
+        """Hook para a Logistica notificar mudanca de status de expedicao/entrega.
+        
+        Atualmente nao persiste estado no Comercial (a fonte de verdade do status
+        de expedicao continua sendo a Logistica). Reservado para acoplar efeitos
+        proprios do Comercial (ex: notificar cliente) quando esse requisito surgir.
+        """
+        if self.repository.get_venda_by_id(id_venda) is None:
+            return False
+        # TODO: quando houver necessidade concreta (ex: notificar cliente,
+        # bloquear cancelamento pos-expedicao), implementar aqui.
+        return True
+
     def list_vendas(self, filters: dict | None = None) -> list[VendaModel]:
         return self.repository.list_vendas(filters)
 
