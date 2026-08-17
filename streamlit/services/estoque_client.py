@@ -257,6 +257,22 @@ class EstoqueClient:
         self._raise_for_api(response)
         return [EstoqueReadSchema.model_validate(item) for item in response.json()]
 
+    def list_all_saldos(self) -> list[SaldoEstoqueReadSchema]:
+        saldos: list[SaldoEstoqueReadSchema] = []
+        for estoque in self.list_estoques():
+            saldos.extend(self.list_saldo_by_estoque(estoque.id_estoque))
+        return saldos
+
+    def list_all_movimentacoes(self, limit_per_estoque: int = 2000) -> list[MovimentacaoEstoqueReadSchema]:
+        movimentacoes: list[MovimentacaoEstoqueReadSchema] = []
+        for estoque in self.list_estoques():
+            movimentacoes.extend(
+                self.list_movimentacoes_by_estoque(
+                    estoque.id_estoque, limit=limit_per_estoque
+                )
+            )
+        return movimentacoes
+
     def list_estoques_by_local(self, id_local: int) -> list[EstoqueReadSchema]:
         response = requests.get(
             self._url(f"/estoque/estoques/local/{id_local}"), timeout=self.timeout

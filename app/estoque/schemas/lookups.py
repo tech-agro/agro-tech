@@ -10,6 +10,7 @@ class ProdutoOptionSchema(BaseModel):
 
     id_produto: int
     nome: str
+    unidade_sigla: str | None = None
 
 
 class ColheitaOptionSchema(BaseModel):

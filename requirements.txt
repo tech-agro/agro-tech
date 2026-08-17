@@ -3,6 +3,7 @@ streamlit-aggrid>=1.1.0
 streamlit-option-menu
 pandas
 altair
+plotly
 sqlalchemy
 psycopg[binary]
 python-dotenv

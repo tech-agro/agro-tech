@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from app.compras.enum import OrderStatus
 from app.compras.models.order import OrderModel
 from app.compras.models.order_item import OrderItemModel
-from app.compras.models.refs import ProdutoRef
+from app.compras.models.refs import ProdutoRef, UnidadeMedidaRef
 from app.core.base_repository import BaseRepository
 from app.core.database import get_session
 
@@ -538,12 +538,21 @@ class RecebimentoCompraRepository(BaseRepository[RecebimentoCompraModel]):
 class LookupRepository:
     """Consultas utilizadas para preencher comboboxes e selects no frontend."""
 
-    def list_produtos(self) -> list[tuple[int, str]]:
+    def list_produtos(self) -> list[tuple[int, str, str | None]]:
         with get_session() as session:
             rows = session.execute(
-                select(ProdutoRef.id_produto, ProdutoRef.nome).order_by(ProdutoRef.nome)
+                select(ProdutoRef.id_produto, ProdutoRef.nome, UnidadeMedidaRef.sigla)
+                .outerjoin(
+                    UnidadeMedidaRef,
+                    UnidadeMedidaRef.id_unidade == ProdutoRef.id_unidade,
+                )
+                .order_by(ProdutoRef.nome)
             ).all()
-            return [(id_produto, nome) for id_produto, nome in rows]
+            result: list[tuple[int, str, str | None]] = []
+            for id_produto, nome, sigla in rows:
+                unidade = sigla.value if hasattr(sigla, "value") else sigla
+                result.append((id_produto, nome, str(unidade) if unidade else None))
+            return result
 
     def list_colheitas(self) -> list[tuple[int, str]]:
         with get_session() as session:
