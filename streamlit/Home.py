@@ -118,6 +118,12 @@ pages = {
             icon=":material/eco:",
             url_path="bi-fitossanidade",
         ),
+        st.Page(
+            "pages/bi/Logistica.py",
+            title="Logistica",
+            icon=":material/local_shipping:",
+            url_path="bi-logistica",
+        ),
     ],
 }
 
