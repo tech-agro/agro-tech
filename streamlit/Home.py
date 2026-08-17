@@ -106,6 +106,12 @@ pages = {
             icon=":material/shopping_cart:",
             url_path="bi-compras",
         ),
+        st.Page(
+            "pages/bi/Logistica.py",
+            title="Logistica",
+            icon=":material/local_shipping:",
+            url_path="bi-logistica",
+        ),
     ],
 }
 
