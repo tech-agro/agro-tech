@@ -112,6 +112,12 @@ pages = {
             icon=":material/local_shipping:",
             url_path="bi-logistica",
         ),
+        st.Page(
+            "pages/bi/Margem.py",
+            title="Margem por safra",
+            icon=":material/analytics:",
+            url_path="bi-margem",
+        ),
     ],
 }
 
