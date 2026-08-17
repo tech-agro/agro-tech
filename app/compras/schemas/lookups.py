@@ -29,3 +29,17 @@ class CostCenterOptionSchema(BaseModel):
 
     id_centro_custo: int
     nome: str
+
+
+class FarmOptionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_fazenda: int
+    nome: str
+
+
+class MachineTypeOptionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_tipo_maquina: int
+    descricao: str

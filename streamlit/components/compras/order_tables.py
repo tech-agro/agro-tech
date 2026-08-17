@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import pandas as pd
 
-from components.compras.formatters import STATUS_LABELS
+from components.compras.formatters import PURCHASE_TYPE_LABELS, STATUS_LABELS
 
 
 def orders_df(orders) -> pd.DataFrame:
     if not orders:
-        return pd.DataFrame(columns=["ID", "Fornecedor", "Data", "Status"])
+        return pd.DataFrame(columns=["ID", "Fornecedor", "Tipo", "Data", "Status"])
     return pd.DataFrame(
         [
             {
                 "ID": o.id_pedido,
                 "Fornecedor": o.fornecedor_nome or f"#{o.id_fornecedor}",
+                "Tipo": PURCHASE_TYPE_LABELS.get(
+                    o.tipo_compra, getattr(o.tipo_compra, "value", "Insumo")
+                ),
                 "Data": o.data_pedido.isoformat() if o.data_pedido else "",
                 "Status": STATUS_LABELS.get(o.status, o.status.value),
             }

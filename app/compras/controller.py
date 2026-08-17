@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException, status
 from app.compras.errors import PurchaseError
 from app.compras.schemas.lookups import (
     CostCenterOptionSchema,
+    FarmOptionSchema,
+    MachineTypeOptionSchema,
     ProductOptionSchema,
     SupplierOptionSchema,
 )
@@ -19,6 +21,28 @@ from app.compras.schemas.order_item import (
     OrderItemCreateSchema,
     OrderItemReadSchema,
     OrderItemUpdateSchema,
+)
+from app.compras.schemas.purchase_invoice import (
+    PurchaseInvoiceCreateSchema,
+    PurchaseInvoiceReadSchema,
+    PurchaseInvoiceUpdateSchema,
+)
+from app.compras.schemas.purchase_request import (
+    ConvertRequestToOrderSchema,
+    PurchaseRequestCreateSchema,
+    PurchaseRequestReadSchema,
+    PurchaseRequestUpdateSchema,
+)
+from app.compras.schemas.purchase_request_item import (
+    PurchaseRequestItemCreateSchema,
+    PurchaseRequestItemReadSchema,
+    PurchaseRequestItemUpdateSchema,
+)
+from app.compras.schemas.quotation_item import QuotationItemReadSchema
+from app.compras.schemas.supplier_quotation import (
+    QuotationComparisonSchema,
+    SupplierQuotationCreateSchema,
+    SupplierQuotationReadSchema,
 )
 from app.compras.schemas.purchase import (
     PurchaseCreateSchema,
@@ -57,9 +81,84 @@ class PurchaseController:
         self.router.get(
             "/lookups/cost-centers", response_model=list[CostCenterOptionSchema]
         )(self.list_cost_center_options)
+        self.router.get("/lookups/farms", response_model=list[FarmOptionSchema])(
+            self.list_farm_options
+        )
+        self.router.get(
+            "/lookups/machine-types", response_model=list[MachineTypeOptionSchema]
+        )(self.list_machine_type_options)
         self.router.get("/cnpj/{cnpj}", response_model=CompanyData)(
             self.lookup_empresa_por_cnpj
         )
+
+        self.router.post("/requests", response_model=PurchaseRequestReadSchema)(
+            self.create_request
+        )
+        self.router.get("/requests", response_model=list[PurchaseRequestReadSchema])(
+            self.list_requests
+        )
+        self.router.get(
+            "/requests/{request_id}", response_model=PurchaseRequestReadSchema
+        )(self.get_request)
+        self.router.patch(
+            "/requests/{request_id}", response_model=PurchaseRequestReadSchema
+        )(self.update_request)
+        self.router.delete(
+            "/requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT
+        )(self.delete_request)
+        self.router.post(
+            "/requests/{request_id}/items",
+            response_model=PurchaseRequestItemReadSchema,
+        )(self.add_request_item)
+        self.router.get(
+            "/requests/{request_id}/items",
+            response_model=list[PurchaseRequestItemReadSchema],
+        )(self.list_request_items)
+        self.router.patch(
+            "/requests/{request_id}/items/{item_id}",
+            response_model=PurchaseRequestItemReadSchema,
+        )(self.update_request_item)
+        self.router.delete(
+            "/requests/{request_id}/items/{item_id}",
+            status_code=status.HTTP_204_NO_CONTENT,
+        )(self.delete_request_item)
+        self.router.post(
+            "/requests/{request_id}/convert-to-order",
+            response_model=OrderReadSchema,
+        )(self.convert_request_to_order)
+        self.router.get(
+            "/requests/{request_id}/quotations/comparison",
+            response_model=QuotationComparisonSchema,
+        )(self.get_quotation_comparison)
+        self.router.post(
+            "/requests/{request_id}/quotations",
+            response_model=SupplierQuotationReadSchema,
+        )(self.create_quotation)
+        self.router.get(
+            "/requests/{request_id}/quotations",
+            response_model=list[SupplierQuotationReadSchema],
+        )(self.list_quotations)
+        self.router.delete(
+            "/requests/{request_id}/quotations/{quotation_id}",
+            status_code=status.HTTP_204_NO_CONTENT,
+        )(self.delete_quotation)
+        self.router.get(
+            "/quotations/{quotation_id}/items",
+            response_model=list[QuotationItemReadSchema],
+        )(self.list_quotation_items)
+        self.router.post(
+            "/quotations/{quotation_id}/select-winner",
+            response_model=OrderReadSchema,
+        )(self.select_winning_quotation)
+        self.router.get(
+            "/invoices/{invoice_id}", response_model=PurchaseInvoiceReadSchema
+        )(self.get_invoice)
+        self.router.patch(
+            "/invoices/{invoice_id}", response_model=PurchaseInvoiceReadSchema
+        )(self.update_invoice)
+        self.router.delete(
+            "/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT
+        )(self.delete_invoice)
 
         # Supplier CRUD (must be registered before /{purchase_id}).
         self.router.post("/suppliers", response_model=SupplierReadSchema)(
@@ -105,6 +204,15 @@ class PurchaseController:
             status_code=status.HTTP_204_NO_CONTENT,
         )(self.delete_item)
 
+        self.router.post(
+            "/orders/{order_id}/invoices",
+            response_model=PurchaseInvoiceReadSchema,
+        )(self.create_invoice)
+        self.router.get(
+            "/orders/{order_id}/invoices",
+            response_model=list[PurchaseInvoiceReadSchema],
+        )(self.list_invoices)
+
         self.router.post("/", response_model=PurchaseReadSchema)(self.register_purchase)
         self.router.get("/", response_model=list[PurchaseReadSchema])(self.list_purchases)
         self.router.get("/{purchase_id}", response_model=PurchaseReadSchema)(
@@ -125,6 +233,12 @@ class PurchaseController:
 
     def list_cost_center_options(self) -> list[CostCenterOptionSchema]:
         return self.service.list_cost_center_options()
+
+    def list_farm_options(self) -> list[FarmOptionSchema]:
+        return self.service.list_farm_options()
+
+    def list_machine_type_options(self) -> list[MachineTypeOptionSchema]:
+        return self.service.list_machine_type_options()
 
     def lookup_empresa_por_cnpj(self, cnpj: str) -> CompanyData:
         try:
@@ -262,6 +376,176 @@ class PurchaseController:
     def delete_purchase(self, purchase_id: int) -> None:
         if not self.service.delete_purchase(purchase_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase not found")
+
+    def create_request(self, payload: PurchaseRequestCreateSchema) -> PurchaseRequestReadSchema:
+        try:
+            return self.service.create_request(payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+
+    def list_requests(self) -> list[PurchaseRequestReadSchema]:
+        return self.service.list_requests()
+
+    def get_request(self, request_id: int) -> PurchaseRequestReadSchema:
+        request = self.service.get_request(request_id)
+        if request is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return request
+
+    def update_request(
+        self, request_id: int, payload: PurchaseRequestUpdateSchema
+    ) -> PurchaseRequestReadSchema:
+        try:
+            request = self.service.update_request(request_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if request is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return request
+
+    def delete_request(self, request_id: int) -> None:
+        try:
+            ok = self.service.delete_request(request_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if not ok:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+
+    def add_request_item(
+        self, request_id: int, payload: PurchaseRequestItemCreateSchema
+    ) -> PurchaseRequestItemReadSchema:
+        try:
+            item = self.service.add_request_item(request_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if item is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return item
+
+    def list_request_items(
+        self, request_id: int
+    ) -> list[PurchaseRequestItemReadSchema]:
+        items = self.service.list_request_items(request_id)
+        if items is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return items
+
+    def update_request_item(
+        self,
+        request_id: int,
+        item_id: int,
+        payload: PurchaseRequestItemUpdateSchema,
+    ) -> PurchaseRequestItemReadSchema:
+        try:
+            item = self.service.update_request_item(request_id, item_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if item is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request item not found")
+        return item
+
+    def delete_request_item(self, request_id: int, item_id: int) -> None:
+        try:
+            ok = self.service.delete_request_item(request_id, item_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if not ok:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request item not found")
+
+    def convert_request_to_order(
+        self, request_id: int, payload: ConvertRequestToOrderSchema
+    ) -> OrderReadSchema:
+        try:
+            order = self.service.convert_request_to_order(request_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if order is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return order
+
+    def create_quotation(
+        self, request_id: int, payload: SupplierQuotationCreateSchema
+    ) -> SupplierQuotationReadSchema:
+        try:
+            quotation = self.service.create_quotation(request_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if quotation is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return quotation
+
+    def list_quotations(self, request_id: int) -> list[SupplierQuotationReadSchema]:
+        quotations = self.service.list_quotations(request_id)
+        if quotations is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return quotations
+
+    def list_quotation_items(self, quotation_id: int) -> list[QuotationItemReadSchema]:
+        items = self.service.list_quotation_items(quotation_id)
+        if items is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Quotation not found")
+        return items
+
+    def get_quotation_comparison(self, request_id: int) -> QuotationComparisonSchema:
+        comparison = self.service.get_quotation_comparison(request_id)
+        if comparison is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Purchase request not found")
+        return comparison
+
+    def select_winning_quotation(self, quotation_id: int) -> OrderReadSchema:
+        try:
+            order = self.service.select_winning_quotation(quotation_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if order is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Quotation not found")
+        return order
+
+    def delete_quotation(self, request_id: int, quotation_id: int) -> None:
+        try:
+            ok = self.service.delete_quotation(request_id, quotation_id)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if not ok:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Quotation not found")
+
+    def create_invoice(
+        self, order_id: int, payload: PurchaseInvoiceCreateSchema
+    ) -> PurchaseInvoiceReadSchema:
+        try:
+            invoice = self.service.create_invoice(order_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if invoice is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return invoice
+
+    def list_invoices(self, order_id: int) -> list[PurchaseInvoiceReadSchema]:
+        invoices = self.service.list_invoices(order_id)
+        if invoices is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+        return invoices
+
+    def get_invoice(self, invoice_id: int) -> PurchaseInvoiceReadSchema:
+        invoice = self.service.get_invoice(invoice_id)
+        if invoice is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+        return invoice
+
+    def update_invoice(
+        self, invoice_id: int, payload: PurchaseInvoiceUpdateSchema
+    ) -> PurchaseInvoiceReadSchema:
+        try:
+            invoice = self.service.update_invoice(invoice_id, payload)
+        except PurchaseError as exc:
+            raise self._map_error(exc) from exc
+        if invoice is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+        return invoice
+
+    def delete_invoice(self, invoice_id: int) -> None:
+        if not self.service.delete_invoice(invoice_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
 
 
 purchase_controller = PurchaseController()

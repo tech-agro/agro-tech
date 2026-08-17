@@ -4,7 +4,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.compras.enum import OrderStatus
+from app.compras.enum import OrderStatus, PurchaseType
 from app.compras.schemas.order_item import OrderItemCreateSchema
 
 
@@ -28,4 +28,6 @@ class OrderReadSchema(BaseModel):
     id_fornecedor: int
     data_pedido: date | None
     status: OrderStatus
+    id_solicitacao: int | None = None
+    tipo_compra: PurchaseType = PurchaseType.INSUMO
     fornecedor_nome: str | None = None

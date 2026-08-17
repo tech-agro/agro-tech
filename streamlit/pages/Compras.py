@@ -1,4 +1,4 @@
-"""Compras — abas: Pedidos | Fornecedores."""
+"""Compras — abas: Solicitacoes | Pedidos | Fornecedores."""
 
 from __future__ import annotations
 
@@ -12,14 +12,15 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 
 import streamlit as st
 
-from app.compras.enum import OrderStatus
+from app.compras.enum import OrderStatus, PurchaseRequestStatus
 from app.compras.schemas.lookups import ProductOptionSchema, SupplierOptionSchema
 from app.compras.schemas.order import OrderUpdateSchema
 from app.compras.schemas.order_item import OrderItemCreateSchema
-from components.compras import fornecedores_dialogs
+from components.compras import fornecedores_dialogs, request_dialogs
 from components.compras.dialog_state import clear_dialog_state, get_dialog, open_dialog
 from components.compras.formatters import STATUS_LABELS, product_label, supplier_label
 from components.compras.fornecedores_tables import fornecedores_df
+from components.compras.invoice_dialogs import dialog_new_invoice, render_invoices_section
 from components.compras.items_editor import (
     COL_PRICE,
     COL_QTY,
@@ -30,6 +31,7 @@ from components.compras.items_editor import (
     row_has_product,
 )
 from components.compras.order_tables import items_view_df, orders_df
+from components.compras.request_tables import requests_df
 from components.shared.formatters import format_money
 from components.shared.screens import (
     crud_toolbar,
@@ -45,7 +47,7 @@ from services.identity_client import require_login
 
 require_login()
 
-setup_page("Compras", "Gestao de pedidos de compra e fornecedores.")
+setup_page("Compras", "Gestao de solicitacoes, pedidos de compra e fornecedores.")
 
 
 def _client() -> PurchasesClient:
@@ -154,6 +156,8 @@ def _dialog_detail(order_id: int) -> None:
     st.dataframe(items_view_df(items), use_container_width=True, hide_index=True)
     total = sum(float(i.quantidade) * float(i.valor_unitario) for i in items)
     st.caption(f"Total: {format_money(total)}")
+
+    render_invoices_section(_client(), order_id)
 
     _, col_close = st.columns([4, 1])
     with col_close:
@@ -287,7 +291,60 @@ def _dialog_delete(order_id: int) -> None:
             st.rerun()
 
 
-tab_pedidos, tab_fornecedores = st.tabs(["Pedidos", "Fornecedores"])
+tab_solicitacoes, tab_pedidos, tab_fornecedores = st.tabs(
+    ["Solicitacoes", "Pedidos", "Fornecedores"]
+)
+
+with tab_solicitacoes:
+    try:
+        client = _client()
+        requests = client.list_requests()
+        products = client.list_products()
+        farms = client.list_farms()
+        machine_types = client.list_machine_types()
+        suppliers = client.list_suppliers()
+    except Exception as exc:
+        st.error(f"Nao foi possivel carregar solicitacoes: {exc}")
+        st.stop()
+
+    query, new_clicked = crud_toolbar(
+        key="compras_solicitacoes",
+        filter_placeholder="Filtrar solicitacoes...",
+        new_label="Nova",
+    )
+    if new_clicked:
+        open_dialog("solicitacoes", "new")
+
+    df = filter_dataframe(requests_df(requests), query)
+    selected = data_table(df, key="compras_requests")
+    action = row_actions(
+        key="compras_solicitacoes",
+        selected_count=len(selected),
+        total_count=len(df),
+        disabled=not selected,
+    )
+
+    if selected:
+        sel_id = int(selected[0]["ID"])
+        sel_request = next((r for r in requests if r.id_solicitacao == sel_id), None)
+        if (
+            sel_request
+            and sel_request.status == PurchaseRequestStatus.APROVADA
+            and not sel_request.id_pedido
+        ):
+            if st.button("Cotar fornecedores", icon=":material/compare:"):
+                open_dialog("solicitacoes", "quote", sel_id)
+
+    if action == "view" and selected:
+        open_dialog("solicitacoes", "view", int(selected[0]["ID"]))
+    elif action == "edit" and selected:
+        open_dialog("solicitacoes", "edit", int(selected[0]["ID"]))
+    elif action == "delete" and selected:
+        open_dialog("solicitacoes", "delete", int(selected[0]["ID"]))
+
+    request_dialogs.render(
+        "solicitacoes", client, products, farms, machine_types, suppliers
+    )
 
 with tab_pedidos:
     try:
@@ -334,6 +391,8 @@ with tab_pedidos:
             _dialog_edit(order_id, suppliers, products)
         elif kind == "delete" and order_id is not None:
             _dialog_delete(order_id)
+        elif kind == "invoice" and order_id is not None:
+            dialog_new_invoice(_client(), order_id)
 
 with tab_fornecedores:
     try:
