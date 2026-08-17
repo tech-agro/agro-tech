@@ -13,7 +13,6 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
-from app.comercial.models import CotacaoAgroDocSyncRequest
 from components.comercial import catalogo_dialogs, clientes_dialogs, produtos_dialogs, vendas_dialogs
 from components.comercial.catalogo_tables import categorias_df, centros_custo_df, certificacoes_df, unidades_df
 from components.comercial.clientes_tables import clientes_df
@@ -30,7 +29,11 @@ from components.shared.screens import (
     toast_error,
     toast_ok,
 )
-from services.comercial_client import ComercialApiError, ComercialClient
+from services.comercial_client import (
+    ComercialApiError,
+    ComercialClient,
+    CotacaoAgroDocSyncRequest,
+)
 from services.financeiro_client import FinanceiroApiError, FinanceiroClient
 from services.identity_client import require_login
 from services.inteligencia_client import InteligenciaApiError, InteligenciaClient
@@ -96,7 +99,9 @@ def _comparativo_cotacoes_df(produtos, cotacoes) -> tuple[pd.DataFrame, list[str
                 "Cotação AgroDoc (R$)": round(preco_agrodoc, 2),
                 "Unidade AgroDoc": cotacao_ref.unit or "—",
                 "Diferença (R$)": round(diferenca, 2),
-                "Diferença (%)": round(diferenca_pct, 1) if diferenca_pct is not None else None,
+                "Diferença (%)": (
+                    round(diferenca_pct, 1) if diferenca_pct is not None else pd.NA
+                ),
             }
         )
     return pd.DataFrame(linhas), sem_referencia

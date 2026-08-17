@@ -24,14 +24,15 @@ def fluxo_caixa_df(fluxos) -> pd.DataFrame:
     if not fluxos:
         return pd.DataFrame(columns=columns)
 
-    return pd.DataFrame(
+    def _id_label(value) -> str:
+        return "" if value is None else str(int(value))
+
+    df = pd.DataFrame(
         [
             {
-                "ID": fluxo.id_fluxo,
+                "ID": int(fluxo.id_fluxo),
                 "Tipo": fluxo.tipo or "",
-                "Valor": format_money(
-                    float(fluxo.valor)
-                ),
+                "Valor": format_money(float(fluxo.valor)),
                 "Data Movimento": (
                     fluxo.data_movimento.strftime("%d/%m/%Y")
                     if fluxo.data_movimento
@@ -39,27 +40,14 @@ def fluxo_caixa_df(fluxos) -> pd.DataFrame:
                 ),
                 "Origem": fluxo.origem or "",
                 "Descrição Origem": fluxo.descricao_origem or "",
-                "Conta Pagar": (
-                    str(fluxo.id_conta_pagar)
-                    if fluxo.id_conta_pagar is not None
-                    else ""
-                ),
-                "Conta Receber": (
-                    str(fluxo.id_conta_receber)
-                    if fluxo.id_conta_receber is not None
-                    else ""
-                ),
-                "Pagamento": (
-                    str(fluxo.id_pagamento)
-                    if fluxo.id_pagamento is not None
-                    else ""
-                ),
-                "Recebimento": (
-                    str(fluxo.id_recebimento)
-                    if fluxo.id_recebimento is not None
-                    else ""
-                ),
+                "Conta Pagar": _id_label(fluxo.id_conta_pagar),
+                "Conta Receber": _id_label(fluxo.id_conta_receber),
+                "Pagamento": _id_label(fluxo.id_pagamento),
+                "Recebimento": _id_label(fluxo.id_recebimento),
             }
             for fluxo in fluxos
         ]
     )
+    for col in ("Conta Pagar", "Conta Receber", "Pagamento", "Recebimento"):
+        df[col] = df[col].astype("string")
+    return df
