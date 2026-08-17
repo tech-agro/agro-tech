@@ -125,6 +125,12 @@ pages = {
             url_path="bi-logistica",
         ),
         st.Page(
+            "pages/bi/Comercial.py",
+            title="Comercial",
+            icon=":material/handshake:",
+            url_path="bi-comercial",
+        ),
+        st.Page(
             "pages/bi/Margem.py",
             title="Margem por safra",
             icon=":material/analytics:",
