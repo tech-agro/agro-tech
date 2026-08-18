@@ -398,13 +398,15 @@ def render() -> None:
     custo_manutencao_prev = float(prev_man["Valor"].sum()) if not prev_man.empty else 0.0
     margem_prev = receita_prev - custo_insumos_prev - custo_logistica_prev - custo_manutencao_prev
 
-    # KPIs - include manutencao as a separate metric
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2, c3 = st.columns(3)
     c1.metric("Receita", fmt_brl(receita), delta=delta_label(receita, receita_prev, formatter=fmt_brl))
     c2.metric("Custo insumos", fmt_brl(custo_insumos), delta=delta_label(custo_insumos, custo_insumos_prev, formatter=fmt_brl))
     c3.metric("Custo logistica", fmt_brl(custo_logistica), delta=delta_label(custo_logistica, custo_logistica_prev, formatter=fmt_brl))
+
+    c4, c5 = st.columns([1, 2])
     c4.metric("Custo manutencao", fmt_brl(custo_manutencao), delta=delta_label(custo_manutencao, custo_manutencao_prev, formatter=fmt_brl))
-    c5.metric("Margem", fmt_brl(margem), delta=delta_label(margem, margem_prev, formatter=fmt_brl))
+    with c5:
+        st.metric("Margem", fmt_brl(margem), delta=delta_label(margem, margem_prev, formatter=fmt_brl))
 
     # Inform user if no maintenance records were found
     if df_man_all.empty:

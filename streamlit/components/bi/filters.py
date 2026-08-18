@@ -24,6 +24,7 @@ class FilterSelection:
     safra: str | None
     product: str | None
     supplier: str | None
+    cliente: str | None
     start: date | None
     end: date | None
 
@@ -301,6 +302,7 @@ def render_filter_bar(
     safra_options: list[str] | None,
     product_options: list[str] | None,
     supplier_options: list[str] | None = None,
+    cliente_options: list[str] | None = None,
 ) -> FilterSelection:
     """Render a compact filter bar.
 
@@ -310,10 +312,11 @@ def render_filter_bar(
     token = _reset_token(prefix)
     has_safra = bool(safra_options)
     has_product = bool(product_options)
-    has_supplier = supplier_options is not None
+    has_supplier = bool(supplier_options)
+    has_cliente = bool(cliente_options)
 
     # decide column widths dynamically based on visible controls
-    visible_fields = [has_safra, has_product, has_supplier]
+    visible_fields = [has_safra, has_product, has_supplier, has_cliente]
     field_count = sum(1 for v in visible_fields if v)
     show_clear = field_count > 0
     # when there are visible fields, reserve a small column for the clear button
@@ -356,11 +359,24 @@ def render_filter_bar(
                 supplier_options or [],
                 key=f"{prefix}_fornecedor_{token}",
             )
-        # clear column is the last column
-        clear_col = cols[-1] if show_clear else None
+        col_idx += 1
     else:
         supplier = None
-        clear_col = cols[-1] if show_clear else None
+
+    if has_cliente:
+        with cols[col_idx]:
+            cliente = _choice(
+                "Cliente",
+                _TODOS,
+                cliente_options or [],
+                key=f"{prefix}_cliente_{token}",
+            )
+        col_idx += 1
+    else:
+        cliente = None
+
+    # clear column is the last column
+    clear_col = cols[-1] if show_clear else None
 
     if show_clear and clear_col is not None:
         with clear_col:
@@ -400,6 +416,7 @@ def render_filter_bar(
         safra=safra,
         product=product,
         supplier=supplier,
+        cliente=cliente,
         start=start,
         end=end,
     )
