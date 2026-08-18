@@ -42,13 +42,15 @@ def render_kpis(contas_pagar: list, contas_receber: list) -> None:
     recebido = sum(float(c.valor_recebido) for c in contas_receber)
     pago = sum(float(c.valor) - float(c.saldo) for c in contas_pagar)
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     col1.metric("A receber (em aberto)", fmt_brl(a_receber))
     col2.metric("A pagar (em aberto)", fmt_brl(a_pagar))
     col3.metric("Saldo projetado", fmt_brl(a_receber - a_pagar))
-    # Use shared formatting helper to avoid formatting inconsistencies
-    col4.metric("Já recebido / pago", f"{fmt_brl(recebido)} / {fmt_brl(pago)}")
 
+    col4, col5 = st.columns([1, 2])
+    col4.metric("Já recebido", fmt_brl(recebido))
+    with col5:
+        st.metric("Já pago", fmt_brl(pago))
 
 def render_fluxo_chart(fluxo: list) -> None:
     teal, amber = _cores()

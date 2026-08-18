@@ -142,6 +142,12 @@ pages = {
             icon=":material/analytics:",
             url_path="bi-margem",
         ),
+        st.Page(
+            "pages/bi/Manutencao.py",
+            title="Manutenção",
+            icon=":material/build:",
+            url_path="bi-manutencao",
+        ),
     ],
 }
 

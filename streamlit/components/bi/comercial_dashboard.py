@@ -127,6 +127,7 @@ def render() -> None:
     rows = []
     for v in vendas:
         data_venda = _as_date(getattr(v, "data_venda", None))
+        id_venda = getattr(v, "id_venda", getattr(v, "id", None))
         cliente = getattr(v, "cliente_nome", f"#{getattr(v, 'id_cliente', '')}")
         itens = getattr(v, "itens", []) or []
         for item in itens:
@@ -135,7 +136,7 @@ def render() -> None:
             valor_unit = _safe_float(getattr(item, "valor_unitario", 0.0))
             valor = quantidade * valor_unit
             safra = _assign_safra_by_date(data_venda, safras)
-            rows.append({"Data": data_venda, "Cliente": cliente, "Produto": produto, "Quantidade": quantidade, "Valor": valor, "Safra": safra})
+            rows.append({"Data": data_venda, "Cliente": cliente, "Produto": produto, "Quantidade": quantidade, "Valor": valor, "Safra": safra, "IdVenda": id_venda})
 
     df_all = pd.DataFrame(rows)
 
@@ -143,7 +144,7 @@ def render() -> None:
     cliente_options = sorted({r["Cliente"] for r in rows}) if rows else []
     safra_options = sorted({r["Safra"] for r in rows}) if rows else ["Fora de safra"]
 
-    filtros = render_filter_bar(prefix="bi_comercial", safra_options=safra_options, product_options=product_options)
+    filtros = render_filter_bar(prefix="bi_comercial", safra_options=safra_options, product_options=product_options, cliente_options=cliente_options)
 
     # Ensure Data is datetime
     if not df_all.empty:
@@ -160,10 +161,12 @@ def render() -> None:
         df = df[df["Safra"] == filtros.safra]
     if filtros.product:
         df = df[df["Produto"] == filtros.product]
+    if getattr(filtros, "cliente", None):
+        df = df[df["Cliente"] == filtros.cliente]
 
     # KPIs
     receita = float(df["Valor"].sum()) if not df.empty else 0.0
-    n_vendas = int(df.drop_duplicates(subset=["Data", "Cliente"]).shape[0]) if not df.empty else 0
+    n_vendas = int(df["IdVenda"].nunique()) if not df.empty and "IdVenda" in df.columns else (int(df.drop_duplicates(subset=["Data", "Cliente"]).shape[0]) if not df.empty else 0)
     ticket_medio = receita / n_vendas if n_vendas else None
     clientes_receita = df.groupby("Cliente", as_index=False).agg({"Valor": "sum"})
     if not clientes_receita.empty:
