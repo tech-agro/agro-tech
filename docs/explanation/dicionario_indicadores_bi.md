@@ -1,4 +1,4 @@
-DICIONARIO DE INDICADORES DE BI — PRODUCAO E FITOSSANIDADE
+DICIONARIO DE INDICADORES DE BI — PRODUCAO, FITOSSANIDADE, COMERCIAL, FINANCEIRO, LOGISTICA, MANUTENCAO E MARGEM
 
 Este documento descreve os indicadores gerenciais expostos pelo modulo
 Inteligencia (`app/inteligencia/`) e consumidos pelos dashboards do menu
@@ -251,6 +251,123 @@ Repositorio: `FitossanidadeBiRepository.ocorrencias_por_severidade`
   variacao proxima de zero sugerem que o controle aplicado funcionou.
   Correlacao, nao prova de causalidade — cruzar com o historico de
   aplicacoes (dose, timing) antes de decidir.
+
+---
+
+## Resumo dos indicadores comerciais, financeiros, logísticos e de manutenção
+
+- **IND-10** — Custo de frete por operação/safra — Logística — R$
+- **IND-11** — Tempo médio entre despacho e entrega — Logística — horas
+- **IND-12** — Receita total e por cliente — Comercial — R$
+- **IND-13** — Ticket médio de venda — Comercial — R$
+- **IND-14** — Vendas por produto/safra — Comercial — R$ / qtd.
+- **IND-15** — Fluxo de caixa consolidado — Financeiro — R$
+- **IND-16** — Aging de contas a pagar/receber — Financeiro — R$ / dias
+- **IND-17** — Custo de manutenção por máquina/período — Manutenção — R$
+- **IND-18** — Proporção preventiva x corretiva — Manutenção — %
+- **IND-19** — Margem por safra — Margem por Safra — R$ / %
+
+## Dashboard: Logística (menu BI > Logistica)
+
+### IND-10 — Custo de frete por operação/safra
+
+- **Formula**: soma dos `custo_previsto` das operações de logística, agregada por operação e por safra; no dashboard, o KPI principal e o total de `df["Custo frete"].sum()` e o custo medio por operacao e `total_frete / total_operacoes`.
+- **Fonte**: `LogisticsClient.list_operations()`, `list_all_loads()`, lotes e `producao_api.listar("/safras")`, com alocacao pela safra vinculada aos lotes envolvidos na carga/operacao.
+- **Granularidade**: por operação e por safra no filtro/agrupamento do dashboard.
+- **Periodicidade**: atualiza ao consultar o dashboard (dados ao vivo), com filtro de periodo e safra no cliente.
+- **Interpretacao**: mostra o custo logístico efetivo de movimentacao do produto. Operacoes com custo alto no mesmo periodo devem ser comparadas por safra e por origem/destino para distinguir efeito de distancia, volume ou atraso de entrega.
+- **Dashboard**: `streamlit/components/bi/logistica_dashboard.py`
+
+### IND-11 — Tempo médio entre despacho e entrega
+
+- **Formula**: media de `(data_entrega - data_saida)` em horas para cada despacho registrado, calculada como `sum(duracoes) / len(duracoes)`; o dashboard exibe `df["Tempo desp/entrega (h)"].mean()`.
+- **Fonte**: registros de despacho/entrega da API de logística (`_fetch_dispatch(operation_id, load_id)`), com `data_saida` e `data_entrega` por carga.
+- **Granularidade**: por operacao, consolidado no periodo filtrado.
+- **Periodicidade**: ao vivo, por consulta do dashboard.
+- **Interpretacao**: mede a velocidade operacional da entrega. Valores crescentes e persistentes indicam gargalos em transporte, documentacao, portaria, conferencias ou capacidade da frota.
+
+## Dashboard: Comercial (menu BI > Comercial)
+
+### IND-12 — Receita total e por cliente
+
+- **Formula**: `receita_total = SUM(quantidade * valor_unitario)` sobre todos os itens de venda; por cliente, `df.groupby("Cliente").agg({"Valor": "sum"})`.
+- **Fonte**: `ComercialClient.list_vendas()` e fallback de detalhes por venda (`get_venda`) quando a listagem nao inclui `itens`. Cada linha e um item de venda, com produto, quantidade, valor unitario e safra associada.
+- **Granularidade**: total da base filtrada e por cliente; também suporta filtro por safra, produto e periodo.
+- **Periodicidade**: ao vivo quando o BI e carregado; filtros por periodo/safra produto/cliente aplicados no cliente.
+- **Interpretacao**: indica a performance comercial em valor bruto e a concentracao de receita por cliente. Clientes com grande peso no total exigem acompanhamento de mix, cobranca e renovacao de carteira.
+- **Dashboard**: `streamlit/components/bi/comercial_dashboard.py`
+
+### IND-13 — Ticket médio de venda
+
+- **Formula**: `ticket_medio = receita_total / numero_de_vendas`; no codigo, `n_vendas = df["IdVenda"].nunique()`.
+- **Fonte**: mesma base de itens de venda do dashboard comercial, convertida para valor por item e consolidada por venda.
+- **Granularidade**: por periodo/safra/cliente/produto selecionado.
+- **Periodicidade**: ao vivo no carregamento do dashboard.
+- **Interpretacao**: mede o valor medio por venda. Tendencias de queda podem indicar reducao do mix premium, menor volume por pedido, ou perda de oportunidade em negocios de maior ticket.
+
+### IND-14 — Vendas por produto/safra
+
+- **Formula**: `valor_por_produto = SUM(quantidade * valor_unitario)` agrupado por `Produto`; no mesmo dashboard, a visão por safra usa `groupby([pd.Grouper(key="Data", freq="ME"), "Safra"]).agg({"Valor": "sum"})` para a linha de tendencia de receita por safra.
+- **Fonte**: `itens` das vendas (produto, quantidade, valor unitario, data da venda e safra atribuida por data ou lote).
+- **Granularidade**: por produto, por safra e no tempo (mensal). A quantidade vendida tambem e exibida em `Quantidade` por produto.
+- **Periodicidade**: ao vivo, com filtro por periodo, safra e cliente.
+- **Interpretacao**: ajuda a identificar mix comercial, volume e concentracao por cultura/produto. Indica se a receita vem de poucos produtos ou de um mix mais diversificado.
+
+## Dashboard: Financeiro (menu BI > Financeiro)
+
+### IND-15 — Fluxo de caixa consolidado
+
+- **Formula**: somatorio de movimentacoes de caixa por dia, tratadas como `Entradas` quando `id_conta_receber` e `Saidas` quando `id_conta_pagar`; no grafico, cada linha e agregada por `data` e `tipo` e o valor e somado em `df.groupby(["data", "tipo"]).sum()`.
+- **Fonte**: `FinanceiroClient.list_fluxo_por_periodo(data_inicio, data_fim)`, carregando movimentos financeiros vinculados a contas a pagar e receber.
+- **Granularidade**: por data e tipo de movimento (entradas/saidas), com consolidação do periodo filtrado.
+- **Periodicidade**: configurada pelo filtro de data do dashboard (padrao: ultimo 90 dias se nao houver selecao).
+- **Interpretacao**: mostra a liquidez operacional do negocio em periodo, mostrando se as entradas cobrem as saidas e em que momentos o caixa se fortalece ou aperta. E importante para planejamento de pagamento, investimento e cobertura de capital de giro.
+- **Dashboard**: `streamlit/components/bi/financeiro_dashboard.py` e helper `streamlit/components/financeiro/intelligence.py`
+
+### IND-16 — Aging de contas a pagar/receber
+
+- **Formula**: para cada conta em aberto, calcula bucket de vencimento em relacao a hoje: `Vencidas`, `Até 7 dias`, `8–15 dias`, `16–30 dias`, `Mais de 30 dias`; depois soma `saldo` por bucket e tipo (`A pagar` / `A receber`).
+- **Fonte**: listas de `contas_pagar` e `contas_receber` com status em aberto (`ABERTA`, `PARCIALMENTE_PAGA`, `VENCIDA`, etc.) e campo `vencimento`/`saldo`.
+- **Granularidade**: por bucket de vencimento e tipo de conta; tabela critica detalha dias em atraso e saldo.
+- **Periodicidade**: em tempo real no carregamento, com dependencia da data de hoje.
+- **Interpretacao**: ajuda a priorizar cobrancas e pagamentos e identificar risco de liquidez. O destaque de contas vencidas sinaliza necessidade de acao imediata para evitar atrasos ou perda de relacionamento com fornecedores e clientes.
+
+## Dashboard: Manutenção (menu BI > Manutenção)
+
+### IND-17 — Custo de manutenção por máquina/período
+
+- **Formula**: soma de `custo` das manutencoes concluídas (`status == "CONCLUIDA"`) no periodo e maquina selecionados, agrupado por `Maquina`: `df_man.groupby("Maquina").agg({"Custo": "sum"})`.
+- **Fonte**: `manutencao_api.list_manutencoes_preventivas()`, `list_manutencoes_corretivas()`, `list_ordens_servico()` e `list_maquinas()`; o custo e lido do campo `manutencao.custo`.
+- **Granularidade**: por máquina e periodo do filtro; acrescenta detalhe de tipo (preventiva/corretiva).
+- **Periodicidade**: ao vivo, filtrado por periodo de data (`render_filter_bar`) e opcao de maquina.
+- **Interpretacao**: identifica onde o custo de manutenção esta mais concentrado. Maquinas com alto custo em corretivas podem indicar falta de previsibilidade, desgaste acelerado ou necessidade de planejamento de inspeccao preventiva.
+- **Dashboard**: `streamlit/components/bi/manutencao_dashboard.py`
+
+### IND-18 — Proporção preventiva x corretiva
+
+- **Formula**: calculada por custo, nao por quantidade de ocorrencias: `preventiva_pct = preventivo_custo / (preventivo_custo + corretivo_custo) * 100` e `corretiva_pct = corretivo_custo / (preventivo_custo + corretivo_custo) * 100`.
+- **Fonte**: mesma base de manutencoes concluídas do indicador anterior, separada por tipo (`Preventiva` vs `Corretiva`).
+- **Granularidade**: proporcao do custo total de manutenção no periodo/maquina filtrado.
+- **Periodicidade**: ao vivo, conforme filtros.
+- **Interpretacao**: quanto maior a quota preventiva, melhor o perfil de manutencao de um parque. Dominio de corretivas a longo prazo tende a elevar custo, paralisaçoes e perdas de produtividade.
+
+## Dashboard: Margem por safra (menu BI > Margem)
+
+### IND-19 — Margem por safra
+
+- **Formula (valor)**: `margem = receita_total - custo_insumos - custo_logistica - custo_manutencao`, onde:
+  - `receita_total = SUM(quantidade * valor_unitario)` dos itens de venda;
+  - `custo_insumos = soma das compras` na safra;
+  - `custo_logistica = soma dos custos previstos das operacoes de transporte` 
+    atribuidos a safra;
+  - `custo_manutencao = soma dos custos de manutencao concluida` na safra.
+- **Formula (percentual)**: `margem_percentual = (margem / receita_total) * 100`, quando `receita_total > 0`.
+- **Fonte**: cruzamento de dados de vendas (`ComercialClient`), compras (`PurchasesClient`), logística (`LogisticsClient`) e manutenção (`manutencao_client`), atribuidos a safra por data do evento ou pelo lote/vinculo da operação.
+- **Granularidade**: por safra e por periodo selecionado; o dashboard tambem mostra a soma total e a tabela detalhada por safra.
+- **Periodicidade**: conforme filtro de periodo e data e atualizacao ao vivo do dashboard.
+- **Interpretacao**: e o indicador financeiro mais direto para comparar a rentabilidade por safra. Margens positivas e crescentes indicam que o mix e o custo operacional estao sendo sustentados; margens negativas, mesmo que temporarias, exigem revisão de precificacao, mix de produtos, compras, logistica e manutenção.
+- **Premissas e limitacoes**: o dashboard e intencionalmente conservador e usa atribuicao direta por data/lote quando houver correspondencia; quando existe multipla safra em uma mesma operacao ou evento, a alocacao e aproximada pela regra de safra aplicada, sem rateio complexo entre safras.
+- **Dashboard**: `streamlit/components/bi/margem_dashboard.py`
 
 ---
 
