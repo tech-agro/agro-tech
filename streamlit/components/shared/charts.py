@@ -51,4 +51,4 @@ def trend_chart(
         .encode(**encode_kwargs)
         .properties(height=height)
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart)

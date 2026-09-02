@@ -26,8 +26,10 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import streamlit as st
 
+from components.bi import charts
 from components.bi.filters import render_filter_bar
 from components.bi.widgets import delta_label, download_csv, fmt_brl, fmt_int
+from components.shared.palette import semantic
 from components.shared.screens import setup_page, toast_error
 from services import producao_client as producao_api
 from services.compras_client import PurchasesClient, PurchasesApiError
@@ -398,15 +400,18 @@ def render() -> None:
     custo_manutencao_prev = float(prev_man["Valor"].sum()) if not prev_man.empty else 0.0
     margem_prev = receita_prev - custo_insumos_prev - custo_logistica_prev - custo_manutencao_prev
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Receita", fmt_brl(receita), delta=delta_label(receita, receita_prev, formatter=fmt_brl))
-    c2.metric("Custo insumos", fmt_brl(custo_insumos), delta=delta_label(custo_insumos, custo_insumos_prev, formatter=fmt_brl))
-    c3.metric("Custo logistica", fmt_brl(custo_logistica), delta=delta_label(custo_logistica, custo_logistica_prev, formatter=fmt_brl))
-
-    c4, c5 = st.columns([1, 2])
-    c4.metric("Custo manutencao", fmt_brl(custo_manutencao), delta=delta_label(custo_manutencao, custo_manutencao_prev, formatter=fmt_brl))
-    with c5:
-        st.metric("Margem", fmt_brl(margem), delta=delta_label(margem, margem_prev, formatter=fmt_brl))
+    with st.container(horizontal=True):
+        st.metric("Receita", fmt_brl(receita), delta=delta_label(receita, receita_prev, formatter=fmt_brl), border=True)
+        st.metric("Custo insumos", fmt_brl(custo_insumos), delta=delta_label(custo_insumos, custo_insumos_prev, formatter=fmt_brl), delta_color="inverse", border=True)
+        st.metric("Custo logistica", fmt_brl(custo_logistica), delta=delta_label(custo_logistica, custo_logistica_prev, formatter=fmt_brl), delta_color="inverse", border=True)
+        st.metric("Custo manutencao", fmt_brl(custo_manutencao), delta=delta_label(custo_manutencao, custo_manutencao_prev, formatter=fmt_brl), delta_color="inverse", border=True)
+        st.metric(
+            "Margem",
+            fmt_brl(margem),
+            delta=delta_label(margem, margem_prev, formatter=fmt_brl),
+            help="Receita − custo de insumos − custo de logística − custo de manutenção.",
+            border=True,
+        )
 
     # Inform user if no maintenance records were found
     if df_man_all.empty:
@@ -429,11 +434,11 @@ def render() -> None:
     safra_list = sorted(safra_set)
     rows = []
     for s in safra_list:
-        rec = float(df_rev[df_rev["Safra"] == s]["Valor"].sum()) if not df_rev.empty else 0.0
-        pur = float(df_pur[df_pur["Safra"] == s]["Valor"].sum()) if not df_pur.empty else 0.0
-        log = float(df_log[df_log["Safra"] == s]["Valor"].sum()) if not df_log.empty else 0.0
-        man = float(df_man[df_man["Safra"] == s]["Valor"].sum()) if not df_man.empty else 0.0
-        marg = rec - pur - log - man
+        rec = round(float(df_rev[df_rev["Safra"] == s]["Valor"].sum()), 2) if not df_rev.empty else 0.0
+        pur = round(float(df_pur[df_pur["Safra"] == s]["Valor"].sum()), 2) if not df_pur.empty else 0.0
+        log = round(float(df_log[df_log["Safra"] == s]["Valor"].sum()), 2) if not df_log.empty else 0.0
+        man = round(float(df_man[df_man["Safra"] == s]["Valor"].sum()), 2) if not df_man.empty else 0.0
+        marg = round(rec - pur - log - man, 2)
         rows.append({"Safra": s, "Receita": rec, "Insumos": pur, "Logistica": log, "Manutencao": man, "Margem": marg})
 
     df_table = pd.DataFrame(rows).sort_values("Margem", ascending=False)
@@ -441,14 +446,31 @@ def render() -> None:
     col_chart, col_table = st.columns([1.2, 1])
     with col_chart:
         st.subheader("Margem por safra")
-        st.bar_chart(df_table.set_index("Safra")["Margem"], use_container_width=True)
+        df_chart = df_table.copy()
+        df_chart["Resultado"] = df_chart["Margem"].apply(lambda m: "Positiva" if m >= 0 else "Negativa")
+        charts.bar_chart(
+            df_chart,
+            x="Safra",
+            y="Margem",
+            y_title="Margem (R$)",
+            color="Resultado",
+            color_map={"Positiva": semantic("green"), "Negativa": semantic("red")},
+        )
 
     with col_table:
         st.subheader("Detalhamento por componente")
-        display = df_table.copy()
-        for col in ("Receita", "Insumos", "Logistica", "Manutencao", "Margem"):
-            display[col] = display[col].map(fmt_brl)
-        st.dataframe(display, use_container_width=True, hide_index=True)
+        st.dataframe(
+            df_table,
+            hide_index=True,
+            column_config={
+                "Safra": st.column_config.TextColumn("Safra", pinned=True),
+                "Receita": st.column_config.NumberColumn("Receita (R$)", format="localized"),
+                "Insumos": st.column_config.NumberColumn("Insumos (R$)", format="localized"),
+                "Logistica": st.column_config.NumberColumn("Logística (R$)", format="localized"),
+                "Manutencao": st.column_config.NumberColumn("Manutenção (R$)", format="localized"),
+                "Margem": st.column_config.NumberColumn("Margem (R$)", format="localized"),
+            },
+        )
         download_csv(
             df_table.rename(columns={"Safra": "safra", "Receita": "receita", "Insumos": "insumos", "Logistica": "logistica", "Manutencao": "manutencao", "Margem": "margem"}),
             filename="dashboard_margem_safra.csv",

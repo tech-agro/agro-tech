@@ -13,6 +13,7 @@ import streamlit as st
 from components.bi import charts
 from components.bi.widgets import download_csv, fmt_brl, fmt_int
 from components.shared.screens import setup_page, toast_error
+from components.shared.palette import badge_column, badge_value
 from services import producao_client as producao_api
 from services.inteligencia_client import InteligenciaApiError, InteligenciaClient
 
@@ -27,6 +28,9 @@ _SEVERITY_COLORS = {
 }
 _PRESSAO_ALTA = {"Alto", "Critico"}
 _PREFIX = "bi_fitossanidade"
+
+_SEVERITY_TONE = {"Baixo": "green", "Medio": "orange", "Alto": "orange", "Critico": "red", "Nao informado": "gray"}
+_SEVERITY_OPTIONS = ["Baixo", "Medio", "Alto", "Critico", "Nao informado"]
 
 
 def _client() -> InteligenciaClient:
@@ -168,18 +172,22 @@ def _render_custos(id_safra: int | None, id_talhao: int | None, produtividade_po
     total_aplicacoes = sum(i.total_aplicacoes for i in custos)
     talhoes_com_custo = sum(1 for i in custos if i.custo_total)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Custo total de defensivos", fmt_brl(custo_total))
-    col2.metric("Aplicacoes registradas", fmt_int(total_aplicacoes))
-    col3.metric("Talhoes com custo no periodo", fmt_int(talhoes_com_custo))
+    with st.container(horizontal=True):
+        st.metric("Custo total de defensivos", fmt_brl(custo_total), border=True)
+        st.metric("Aplicacoes registradas", fmt_int(total_aplicacoes), border=True)
+        st.metric("Talhoes com custo no periodo", fmt_int(talhoes_com_custo), border=True)
 
     if not custos:
         st.info("Sem dados de custo de defensivos para o filtro selecionado.")
         return
 
+    multi_safra = len({i.safra_nome for i in custos}) > 1
     df_chart = pd.DataFrame(
         [
-            {"talhao": f"{i.talhao_nome} ({i.safra_nome})", "custo": float(i.custo_total)}
+            {
+                "talhao": f"{i.talhao_nome} ({i.safra_nome})" if multi_safra else i.talhao_nome,
+                "custo": float(i.custo_total),
+            }
             for i in custos
         ]
     ).sort_values("custo", ascending=False)
@@ -199,7 +207,7 @@ def _render_custos(id_safra: int | None, id_talhao: int | None, produtividade_po
                 "Aplicacoes": i.total_aplicacoes,
                 "Custo total (R$)": float(i.custo_total),
                 "R$/ha": (
-                    float(i.custo_total) / produtividade_por_talhao[i.id_talhao]
+                    round(float(i.custo_total) / produtividade_por_talhao[i.id_talhao], 2)
                     if i.id_talhao in produtividade_por_talhao and produtividade_por_talhao[i.id_talhao]
                     else None
                 ),
@@ -207,7 +215,17 @@ def _render_custos(id_safra: int | None, id_talhao: int | None, produtividade_po
             for i in custos
         ]
     )
-    st.dataframe(df_tabela, use_container_width=True, hide_index=True)
+    st.dataframe(
+        df_tabela,
+        hide_index=True,
+        column_config={
+            "Talhao": st.column_config.TextColumn("Talhão", pinned=True),
+            "Safra": st.column_config.TextColumn("Safra"),
+            "Aplicacoes": st.column_config.NumberColumn("Aplicações", format="%d"),
+            "Custo total (R$)": st.column_config.NumberColumn("Custo total (R$)", format="localized"),
+            "R$/ha": st.column_config.NumberColumn("R$/ha", format="localized"),
+        },
+    )
     download_csv(df_tabela, filename="custo_defensivos.csv", key=f"{_PREFIX}_custos_csv")
 
 
@@ -224,20 +242,21 @@ def _render_ocorrencias(id_safra: int | None, id_talhao: int | None) -> list:
     criticas = sum(i.total_ocorrencias for i in ocorrencias if i.nivel_severidade == "Critico")
     altas = sum(i.total_ocorrencias for i in ocorrencias if i.nivel_severidade == "Alto")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Ocorrencias registradas", fmt_int(total))
-    col2.metric("Severidade critica", fmt_int(criticas))
-    col3.metric("Severidade alta", fmt_int(altas))
+    with st.container(horizontal=True):
+        st.metric("Ocorrencias registradas", fmt_int(total), border=True)
+        st.metric("Severidade critica", fmt_int(criticas), border=True)
+        st.metric("Severidade alta", fmt_int(altas), border=True)
 
     if not ocorrencias:
         st.info("Sem ocorrencias de agentes nocivos para o filtro selecionado.")
         return ocorrencias
 
+    multi_safra = len({i.safra_nome for i in ocorrencias}) > 1
     df_chart = (
         pd.DataFrame(
             [
                 {
-                    "talhao": f"{i.talhao_nome} ({i.safra_nome})",
+                    "talhao": f"{i.talhao_nome} ({i.safra_nome})" if multi_safra else i.talhao_nome,
                     "severidade": i.nivel_severidade or "Nao informado",
                     "total": i.total_ocorrencias,
                 }
@@ -268,14 +287,24 @@ def _render_ocorrencias(id_safra: int | None, id_talhao: int | None) -> list:
                 {
                     "Talhao": i.talhao_nome,
                     "Safra": i.safra_nome,
-                    "Severidade": i.nivel_severidade or "Nao informado",
+                    "Severidade": badge_value(i.nivel_severidade or "Nao informado"),
                     "Agente": i.agente_nome or "-",
                     "Ocorrencias": i.total_ocorrencias,
                 }
                 for i in ocorrencias
             ]
         )
-        st.dataframe(df_tabela, use_container_width=True, hide_index=True)
+        st.dataframe(
+            df_tabela,
+            hide_index=True,
+            column_config={
+                "Talhao": st.column_config.TextColumn("Talhão", pinned=True),
+                "Safra": st.column_config.TextColumn("Safra"),
+                "Severidade": badge_column("Severidade", _SEVERITY_OPTIONS, _SEVERITY_TONE, width="small"),
+                "Agente": st.column_config.TextColumn("Agente"),
+                "Ocorrencias": st.column_config.NumberColumn("Ocorrências", format="%d"),
+            },
+        )
         download_csv(df_tabela, filename="ocorrencias_fitossanidade.csv", key=f"{_PREFIX}_ocorr_csv")
     with col_ranking:
         st.caption("Top agentes ofensores no filtro selecionado")

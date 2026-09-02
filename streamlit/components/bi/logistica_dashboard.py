@@ -8,8 +8,12 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import streamlit as st
 
+from components.bi import charts
 from components.bi.filters import render_filter_bar
 from components.bi.widgets import delta_label, download_csv, fmt_brl, fmt_int
+from components.logistica.formatters import OPERATION_STATUS_LABELS
+from components.logistica.operation_tables import OPERATION_STATUS_OPTIONS, OPERATION_STATUS_TONE
+from components.shared.palette import badge_column, badge_value
 from components.shared.screens import setup_page, toast_error
 from services import producao_client as producao_api
 from services.estoque_client import EstoqueApiError, EstoqueClient
@@ -196,7 +200,7 @@ def render() -> None:
                 "Safra": safra,
                 "Custo frete": float(operation.custo_previsto or 0.0),
                 "Tempo desp/entrega (h)": float(tempo_horas) if tempo_horas is not None else None,
-                "Status": operation.status.value if operation.status else None,
+                "Status": OPERATION_STATUS_LABELS.get(operation.status, operation.status.value if operation.status else None),
             }
         )
 
@@ -235,33 +239,38 @@ def render() -> None:
         else 0.0
     )
 
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    col_m1.metric(
-        "Custo de frete",
-        fmt_brl(total_frete),
-        delta=delta_label(total_frete, total_frete_prev, formatter=fmt_brl),
-    )
-    col_m2.metric(
-        "Custo médio por operação",
-        fmt_brl(total_frete / total_operacoes) if total_operacoes else "R$ 0,00",
-        delta=delta_label(
-            total_frete / total_operacoes if total_operacoes else 0.0,
-            total_frete_prev / total_operacoes_prev if total_operacoes_prev else 0.0,
-            formatter=fmt_brl,
-        ),
-    )
-    col_m3.metric(
-        "Tempo médio entre despacho e entrega",
-        f"{prazo_medio:.1f} h" if prazo_medio else "0.0 h",
-        delta=delta_label(prazo_medio, prazo_medio_prev, formatter=lambda value: f"{value:.1f} h"),
-    )
-    col_m4.metric(
-        "Operações",
-        fmt_int(total_operacoes),
-        delta=delta_label(total_operacoes, total_operacoes_prev, formatter=fmt_int),
-    )
-
-    st.divider()
+    with st.container(horizontal=True):
+        st.metric(
+            "Custo de frete",
+            fmt_brl(total_frete),
+            delta=delta_label(total_frete, total_frete_prev, formatter=fmt_brl),
+            delta_color="inverse",
+            border=True,
+        )
+        st.metric(
+            "Custo médio por operação",
+            fmt_brl(total_frete / total_operacoes) if total_operacoes else "R$ 0,00",
+            delta=delta_label(
+                total_frete / total_operacoes if total_operacoes else 0.0,
+                total_frete_prev / total_operacoes_prev if total_operacoes_prev else 0.0,
+                formatter=fmt_brl,
+            ),
+            delta_color="inverse",
+            border=True,
+        )
+        st.metric(
+            "Tempo médio entre despacho e entrega",
+            f"{prazo_medio:.1f} h" if prazo_medio else "0.0 h",
+            delta=delta_label(prazo_medio, prazo_medio_prev, formatter=lambda value: f"{value:.1f} h"),
+            delta_color="inverse",
+            border=True,
+        )
+        st.metric(
+            "Operações",
+            fmt_int(total_operacoes),
+            delta=delta_label(total_operacoes, total_operacoes_prev, formatter=fmt_int),
+            border=True,
+        )
     col_chart, col_table = st.columns([1.1, 1.4])
 
     with col_chart:
@@ -272,7 +281,7 @@ def render() -> None:
             by_safra = by_safra.sort_values(by="Custo frete", ascending=False)
         if not by_safra.empty:
             st.subheader("Custo por safra")
-            st.bar_chart(by_safra.set_index("Safra"), use_container_width=True)
+            charts.bar_chart(by_safra, x="Safra", y="Custo frete", y_title="Custo de frete (R$)")
         else:
             st.info("Nenhuma operação encontrada para os filtros selecionados.")
 
@@ -280,15 +289,25 @@ def render() -> None:
         st.subheader("Operações e indicadores")
         display_df = df.copy()
         if not display_df.empty:
-            display_df["Custo frete"] = display_df["Custo frete"].map(fmt_brl)
-            display_df["Tempo desp/entrega (h)"] = display_df["Tempo desp/entrega (h)"].map(
-                lambda value: f"{float(value):.1f} h" if pd.notna(value) else "-"
-            )
-            display_df["Data"] = display_df["Data"].map(
-                lambda value: value.strftime("%d/%m/%Y") if pd.notna(value) else "-"
-            )
             display_df = display_df[["Operacao", "Data", "Safra", "Custo frete", "Tempo desp/entrega (h)", "Status"]]
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+            # NaN in a NumberColumn renders as the literal text "None" in
+            # this Streamlit build — format as text with an em dash instead.
+            display_df["Tempo desp/entrega (h)"] = pd.to_numeric(
+                display_df["Tempo desp/entrega (h)"], errors="coerce"
+            ).map(lambda v: f"{v:.1f} h" if pd.notna(v) else "—")
+            display_df["Status"] = display_df["Status"].apply(badge_value)
+        st.dataframe(
+            display_df,
+            hide_index=True,
+            column_config={
+                "Operacao": st.column_config.TextColumn("Operação", pinned=True),
+                "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                "Safra": st.column_config.TextColumn("Safra"),
+                "Custo frete": st.column_config.NumberColumn("Custo de frete (R$)", format="localized"),
+                "Tempo desp/entrega (h)": st.column_config.TextColumn("Tempo desp/entrega (h)", alignment="right"),
+                "Status": badge_column("Status", OPERATION_STATUS_OPTIONS, OPERATION_STATUS_TONE, width="medium"),
+            },
+        )
         download_csv(
             df.rename(
                 columns={

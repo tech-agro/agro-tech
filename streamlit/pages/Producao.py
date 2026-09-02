@@ -8,6 +8,7 @@ _STREAMLIT_ROOT = Path(__file__).resolve().parents[1]
 if str(_STREAMLIT_ROOT) not in sys.path:
     sys.path.insert(0, str(_STREAMLIT_ROOT))
 
+import pandas as pd
 import streamlit as st
 
 from app.producao.enum import (
@@ -53,11 +54,40 @@ def _selecionar(label: str, registros: list[dict], rotulo_fn, chave_id: str, key
     return mapa.get(escolha)
 
 
+def _humanize(col: str) -> str:
+    return col.replace("_", " ").strip().capitalize()
+
+
 def _tabela(dados: list[dict]) -> None:
-    if dados:
-        st.dataframe(dados, use_container_width=True)
-    else:
+    """Generic table renderer for the many raw-dict listings in this page.
+
+    No per-entity schema is known here, so formatting is inferred from the
+    project's naming convention: `id_*`/`id` columns are integer ids,
+    `dt_*`/`data_*` columns are dates, and other numeric columns get
+    thousands separators — instead of a plain, unformatted grid.
+    """
+    if not dados:
         st.caption("Nenhum registro encontrado.")
+        return
+
+    df = pd.DataFrame(dados)
+    column_config: dict = {}
+    for col in df.columns:
+        if col == "id" or col.startswith("id_"):
+            column_config[col] = st.column_config.NumberColumn(
+                _humanize(col), format="%d", pinned=(col == df.columns[0])
+            )
+        elif col.startswith("dt_") or col.startswith("data_"):
+            parsed = pd.to_datetime(df[col], errors="coerce")
+            if parsed.notna().any():
+                df[col] = parsed
+                column_config[col] = st.column_config.DatetimeColumn(
+                    _humanize(col), format="DD/MM/YYYY HH:mm"
+                )
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            column_config[col] = st.column_config.NumberColumn(_humanize(col), format="localized")
+
+    st.dataframe(df, hide_index=True, column_config=column_config)
 
 
 def _excluir(rotulo: str, caminho_base: str, id_valor: int | None, key: str) -> None:

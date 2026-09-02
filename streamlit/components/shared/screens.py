@@ -6,7 +6,7 @@ Canonical screen (same for every module):
 
     | col | col | col |
     |-----|-----|-----|
-    | ... | ... | ... |   <- AgGrid
+    | ... | ... | ... |   <- st.dataframe (native grid, row-click selection)
 
     0 de N linha(s) selecionada(s).   [ Ver ] [ Editar ] [ Excluir ]
 
@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from components.shared.logo.widgets import apply_sidebar_logo
 
@@ -46,13 +45,12 @@ def filter_dataframe(df: pd.DataFrame, query: str) -> pd.DataFrame:
     return df[mask]
 
 
-def selected_rows(grid_response) -> list[dict]:
-    rows = grid_response.get("selected_rows")
-    if rows is None:
+def selected_rows(df: pd.DataFrame, event) -> list[dict]:
+    """Resolve an `st.dataframe(on_select=...)` event into row dicts."""
+    indices = list(event.selection.rows) if event is not None else []
+    if not indices:
         return []
-    if isinstance(rows, pd.DataFrame):
-        return rows.to_dict("records")
-    return list(rows)
+    return df.iloc[indices].to_dict("records")
 
 
 def crud_toolbar(
@@ -86,35 +84,31 @@ def data_table(
     *,
     key: str,
     height: int = 360,
-    page_size: int = 8,
+    column_config: dict | None = None,
+    column_order: list[str] | None = None,
+    hide_index: bool = True,
 ) -> list[dict]:
-    """AgGrid with checkbox selection. Pair with row_actions for the footer.
+    """Native `st.dataframe` grid with single-row click selection.
 
-    Do not pass theme=\"streamlit\": that string theme stays light and breaks
-    dark mode. Omitting theme lets recent streamlit-aggrid follow Streamlit.
+    Pass `column_config` (see `st.column_config`) to format currency,
+    dates, progress bars, sparklines, etc. Pair with `row_actions` for
+    the Ver/Editar/Excluir footer.
     """
     if df.columns.empty:
         st.info("Nenhum registro para exibir.")
         return []
 
-    builder = GridOptionsBuilder.from_dataframe(df)
-    builder.configure_selection("single", use_checkbox=True)
-    builder.configure_pagination(
-        enabled=True,
-        paginationAutoPageSize=False,
-        paginationPageSize=page_size,
-    )
-    builder.configure_default_column(resizable=True, filter=True, sortable=True)
-    grid = AgGrid(
+    event = st.dataframe(
         df,
-        gridOptions=builder.build(),
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
-        fit_columns_on_grid_load=True,
-        height=height,
         key=f"{key}_grid",
-        reload_data=True,
+        height=height,
+        hide_index=hide_index,
+        column_config=column_config,
+        column_order=column_order,
+        on_select="rerun",
+        selection_mode="single-row",
     )
-    return selected_rows(grid)
+    return selected_rows(df, event)
 
 
 def row_actions(

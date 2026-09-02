@@ -60,3 +60,33 @@ def forma_pagamento_label(
     option: FormaPagamentoOptionSchema,
 ) -> str:
     return option.valor
+
+
+STATUS_CONTA_LABELS: dict[str, str] = {
+    "ABERTA": "Aberta",
+    "PARCIALMENTE_PAGA": "Parcial",
+    "PARCIALMENTE_RECEBIDA": "Parcial",
+    "PAGA": "Paga",
+    "RECEBIDA": "Recebida",
+    "VENCIDA": "Vencida",
+    "CANCELADA": "Cancelada",
+}
+
+STATUS_CONTA_OPTIONS: list[str] = ["Aberta", "Parcial", "Paga", "Recebida", "Vencida", "Cancelada", "—"]
+
+STATUS_CONTA_TONE: dict[str, str] = {
+    "Aberta": "blue",
+    "Parcial": "orange",
+    "Paga": "green",
+    "Recebida": "green",
+    "Vencida": "red",
+    "Cancelada": "gray",
+    "—": "gray",
+}
+
+
+def status_conta_label(status) -> str:
+    raw = status.value if status is not None and hasattr(status, "value") else status
+    if not raw:
+        return "—"
+    return STATUS_CONTA_LABELS.get(raw, str(raw).title())

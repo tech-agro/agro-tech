@@ -20,7 +20,9 @@ from components.fitossanidade.applications_editor import (
     persist_application_rows,
 )
 from components.fitossanidade.control_tables import (
+    applications_view_column_config,
     applications_view_df,
+    occurrences_view_column_config,
     occurrences_view_df,
 )
 from components.fitossanidade.dialog_state import (
@@ -263,15 +265,15 @@ def _view(scope: str, control_id: int) -> None:
     with tab_occ:
         st.dataframe(
             occurrences_view_df(occurrences),
-            use_container_width=True,
             hide_index=True,
+            column_config=occurrences_view_column_config(),
         )
 
     with tab_app:
         st.dataframe(
             applications_view_df(applications),
-            use_container_width=True,
             hide_index=True,
+            column_config=applications_view_column_config(),
         )
 
     if st.button("Fechar", use_container_width=True):
@@ -395,8 +397,8 @@ def _edit(scope: str, control_id: int) -> None:
             st.info("Cadastre agentes na aba Agentes nocivos da pagina.")
             st.dataframe(
                 occurrences_view_df(occurrences),
-                use_container_width=True,
                 hide_index=True,
+                column_config=occurrences_view_column_config(),
             )
         else:
             occ_df = occurrences_data_editor(
@@ -436,8 +438,8 @@ def _edit(scope: str, control_id: int) -> None:
             st.info("Nenhum defensivo cadastrado.")
             st.dataframe(
                 applications_view_df(applications),
-                use_container_width=True,
                 hide_index=True,
+                column_config=applications_view_column_config(),
             )
         else:
             app_df = applications_data_editor(

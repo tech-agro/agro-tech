@@ -19,7 +19,7 @@ from app.compras.schemas.order_item import OrderItemCreateSchema
 from components.compras import fornecedores_dialogs, request_dialogs
 from components.compras.dialog_state import clear_dialog_state, get_dialog, open_dialog
 from components.compras.formatters import STATUS_LABELS, product_label, supplier_label
-from components.compras.fornecedores_tables import fornecedores_df
+from components.compras.fornecedores_tables import fornecedores_column_config, fornecedores_df
 from components.compras.invoice_dialogs import dialog_new_invoice, render_invoices_section
 from components.compras.items_editor import (
     COL_PRICE,
@@ -30,8 +30,8 @@ from components.compras.items_editor import (
     resolve_product_id,
     row_has_product,
 )
-from components.compras.order_tables import items_view_df, orders_df
-from components.compras.request_tables import requests_df
+from components.compras.order_tables import items_view_column_config, items_view_df, orders_column_config, orders_df
+from components.compras.request_tables import requests_column_config, requests_df
 from components.shared.formatters import format_money
 from components.shared.screens import (
     crud_toolbar,
@@ -153,7 +153,7 @@ def _dialog_detail(order_id: int) -> None:
     )
 
     st.markdown("##### Itens")
-    st.dataframe(items_view_df(items), use_container_width=True, hide_index=True)
+    st.dataframe(items_view_df(items), hide_index=True, column_config=items_view_column_config())
     total = sum(float(i.quantidade) * float(i.valor_unitario) for i in items)
     st.caption(f"Total: {format_money(total)}")
 
@@ -235,7 +235,7 @@ def _dialog_edit(
         )
     else:
         st.info("Itens so podem ser alterados com pedido Aberto.")
-        st.dataframe(items_view_df(items), use_container_width=True, hide_index=True)
+        st.dataframe(items_view_df(items), hide_index=True, column_config=items_view_column_config())
         total = sum(float(i.quantidade) * float(i.valor_unitario) for i in items)
         st.caption(f"Total: {format_money(total)}")
         items_df = None
@@ -316,7 +316,7 @@ with tab_solicitacoes:
         open_dialog("solicitacoes", "new")
 
     df = filter_dataframe(requests_df(requests), query)
-    selected = data_table(df, key="compras_requests")
+    selected = data_table(df, key="compras_requests", column_config=requests_column_config())
     action = row_actions(
         key="compras_solicitacoes",
         selected_count=len(selected),
@@ -365,7 +365,7 @@ with tab_pedidos:
         open_dialog("pedidos", "new")
 
     df = filter_dataframe(orders_df(orders), query)
-    selected = data_table(df, key="compras_orders")
+    selected = data_table(df, key="compras_orders", column_config=orders_column_config())
     action = row_actions(
         key="compras_pedidos",
         selected_count=len(selected),
@@ -410,7 +410,7 @@ with tab_fornecedores:
         open_dialog("fornecedores", "create")
 
     df = filter_dataframe(fornecedores_df(suppliers_full), query)
-    selected = data_table(df, key="compras_fornecedores_grid")
+    selected = data_table(df, key="compras_fornecedores_grid", column_config=fornecedores_column_config())
     action = row_actions(
         key="compras_fornecedores",
         selected_count=len(selected),

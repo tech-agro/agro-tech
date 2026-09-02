@@ -172,13 +172,11 @@ def render() -> None:
     if not clientes_receita.empty:
         clientes_receita = clientes_receita.sort_values(by="Valor", ascending=False)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Receita total", fmt_brl(receita))
-    col2.metric("Ticket medio", fmt_brl(ticket_medio) if ticket_medio is not None else "R$ 0,00")
-    col3.metric("Clientes (ativos)", fmt_int(clientes_receita.shape[0]))
-    col4.metric("Produtos vendidos", fmt_int(df["Produto"].nunique() if not df.empty else 0))
-
-    st.divider()
+    with st.container(horizontal=True):
+        st.metric("Receita total", fmt_brl(receita), border=True)
+        st.metric("Ticket medio", fmt_brl(ticket_medio) if ticket_medio is not None else "R$ 0,00", border=True)
+        st.metric("Clientes (ativos)", fmt_int(clientes_receita.shape[0]), border=True)
+        st.metric("Produtos vendidos", fmt_int(df["Produto"].nunique() if not df.empty else 0), border=True)
 
     # Revenue by client
     st.subheader("Receita por cliente")
@@ -212,7 +210,18 @@ def render() -> None:
     if not df.empty:
         display = df.copy()
         display["Valor"] = pd.to_numeric(display["Valor"], errors="coerce").fillna(0.0).astype(float)
-        st.dataframe(display, use_container_width=True, hide_index=True)
+        st.dataframe(
+            display,
+            hide_index=True,
+            column_config={
+                "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                "Cliente": st.column_config.TextColumn("Cliente", pinned=True),
+                "Produto": st.column_config.TextColumn("Produto"),
+                "Safra": st.column_config.TextColumn("Safra"),
+                "Quantidade": st.column_config.NumberColumn("Quantidade", format="localized"),
+                "Valor": st.column_config.NumberColumn("Valor (R$)", format="localized"),
+            },
+        )
         download_csv(display.rename(columns={"Data": "data", "Cliente": "cliente", "Produto": "produto", "Quantidade": "quantidade", "Valor": "valor", "Safra": "safra"}), filename="dashboard_comercial.csv", key="bi_comercial_csv")
     else:
         st.info("Nenhuma venda para exibir.")

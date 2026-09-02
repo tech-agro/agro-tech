@@ -12,7 +12,7 @@ if str(_STREAMLIT_ROOT) not in sys.path:
 import streamlit as st
 
 from components.fitossanidade import agent_dialogs, control_dialogs
-from components.fitossanidade.control_tables import agents_df, controls_df
+from components.fitossanidade.control_tables import agents_column_config, agents_df, controls_column_config, controls_df
 from components.fitossanidade.dialog_state import open_dialog
 from components.shared.screens import (
     crud_toolbar,
@@ -55,7 +55,7 @@ with tab_controles:
         open_dialog("controles", "create")
 
     df = filter_dataframe(controls_df(controls), query)
-    selected = data_table(df, key="controles_grid")
+    selected = data_table(df, key="controles_grid", column_config=controls_column_config())
     action = row_actions(
         key="controles",
         selected_count=len(selected),
@@ -87,7 +87,7 @@ with tab_agentes:
         open_dialog("agentes", "create")
 
     df = filter_dataframe(agents_df(agents), query)
-    selected = data_table(df, key="agentes_grid")
+    selected = data_table(df, key="agentes_grid", column_config=agents_column_config())
     action = row_actions(
         key="agentes",
         selected_count=len(selected),

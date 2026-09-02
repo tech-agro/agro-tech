@@ -14,12 +14,22 @@ import pandas as pd
 import streamlit as st
 
 from components.comercial import catalogo_dialogs, clientes_dialogs, produtos_dialogs, vendas_dialogs
-from components.comercial.catalogo_tables import categorias_df, centros_custo_df, certificacoes_df, unidades_df
-from components.comercial.clientes_tables import clientes_df
+from components.comercial.catalogo_tables import (
+    categorias_column_config,
+    categorias_df,
+    centros_custo_column_config,
+    centros_custo_df,
+    certificacoes_column_config,
+    certificacoes_df,
+    unidades_column_config,
+    unidades_df,
+)
+from components.comercial.clientes_tables import clientes_column_config, clientes_df
 from components.comercial.dialog_state import open_dialog
 from components.comercial.formatters import cliente_label
-from components.comercial.produtos_tables import produtos_df
-from components.comercial.vendas_tables import vendas_df
+from components.comercial.produtos_tables import produtos_column_config, produtos_df
+from components.comercial.vendas_tables import vendas_column_config, vendas_df
+from components.shared.formatters import format_money
 from components.shared.screens import (
     crud_toolbar,
     data_table,
@@ -140,18 +150,23 @@ with tab_vendas:
             float(c.saldo) for c in conta_por_venda.values() if c.saldo
         )
         vencidas = sum(1 for c in conta_por_venda.values() if c.status == "VENCIDA")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Vendas", len(vendas))
-        c2.metric("Total vendido", f"R$ {total_valor:,.2f}")
-        c3.metric("A receber (com vencidas)", f"R$ {total_a_receber:,.2f}", delta=f"{vencidas} vencida(s)" if vencidas else None, delta_color="inverse")
-        st.divider()
+        with st.container(horizontal=True):
+            st.metric("Vendas", len(vendas), border=True)
+            st.metric("Total vendido", format_money(total_valor), border=True)
+            st.metric(
+                "A receber (com vencidas)",
+                format_money(total_a_receber),
+                delta=f"{vencidas} vencida(s)" if vencidas else None,
+                delta_color="inverse",
+                border=True,
+            )
 
     query, new_clicked = crud_toolbar(key="vendas", filter_placeholder="Filtrar vendas...", new_label="Nova venda")
     if new_clicked:
         open_dialog("vendas", "create")
 
     df = filter_dataframe(vendas_df(vendas, cliente_por_id, conta_por_venda), query)
-    selected = data_table(df, key="vendas_grid")
+    selected = data_table(df, key="vendas_grid", column_config=vendas_column_config())
     action = row_actions(key="vendas", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False)
 
     if action == "view" and selected:
@@ -175,7 +190,7 @@ with tab_clientes:
         open_dialog("clientes", "create")
 
     df = filter_dataframe(clientes_df(clientes), query)
-    selected = data_table(df, key="clientes_grid")
+    selected = data_table(df, key="clientes_grid", column_config=clientes_column_config())
     action = row_actions(key="clientes", selected_count=len(selected), total_count=len(df), disabled=not selected)
 
     if action == "view" and selected:
@@ -203,7 +218,7 @@ with tab_produtos:
         open_dialog("produtos", "create")
 
     df = filter_dataframe(produtos_df(produtos), query)
-    selected = data_table(df, key="produtos_grid")
+    selected = data_table(df, key="produtos_grid", column_config=produtos_column_config())
     action = row_actions(key="produtos", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False)
 
     if action == "view" and selected:
@@ -234,7 +249,7 @@ with tab_catalogo:
             open_dialog("categorias", "create")
 
         df = filter_dataframe(categorias_df(categorias), query)
-        selected = data_table(df, key="categorias_grid")
+        selected = data_table(df, key="categorias_grid", column_config=categorias_column_config())
         action = row_actions(key="categorias", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False)
 
         if action == "delete" and selected:
@@ -254,7 +269,7 @@ with tab_catalogo:
             open_dialog("unidades", "create")
 
         df = filter_dataframe(unidades_df(unidades), query)
-        selected = data_table(df, key="unidades_grid")
+        selected = data_table(df, key="unidades_grid", column_config=unidades_column_config())
         action = row_actions(key="unidades", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False)
 
         if action == "delete" and selected:
@@ -276,7 +291,7 @@ with tab_catalogo:
             open_dialog("certificacoes", "create")
 
         df = filter_dataframe(certificacoes_df(certificacoes), query)
-        selected = data_table(df, key="certificacoes_comercial_grid")
+        selected = data_table(df, key="certificacoes_comercial_grid", column_config=certificacoes_column_config())
         action = row_actions(
             key="certificacoes_comercial", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False
         )
@@ -300,7 +315,7 @@ with tab_catalogo:
             open_dialog("centros_custo", "create")
 
         df = filter_dataframe(centros_custo_df(centros_custo), query)
-        selected = data_table(df, key="centros_custo_grid")
+        selected = data_table(df, key="centros_custo_grid", column_config=centros_custo_column_config())
         action = row_actions(
             key="centros_custo", selected_count=len(selected), total_count=len(df), disabled=not selected, show_edit=False
         )
@@ -348,12 +363,27 @@ with tab_cotacoes:
         else:
             acima = int((df_comparativo["Diferença (R$)"] > 0).sum())
             abaixo = int((df_comparativo["Diferença (R$)"] < 0).sum())
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Produtos comparados", len(df_comparativo))
-            c2.metric("Acima do mercado", acima)
-            c3.metric("Abaixo do mercado", abaixo)
+            with st.container(horizontal=True):
+                st.metric("Produtos comparados", len(df_comparativo), border=True)
+                st.metric("Acima do mercado", acima, border=True)
+                st.metric("Abaixo do mercado", abaixo, border=True)
 
-            data_table(df_comparativo, key="comparativo_cotacoes")
+            df_comparativo = df_comparativo.copy()
+            df_comparativo["Situação"] = df_comparativo["Diferença (R$)"].apply(
+                lambda d: "🔼 Acima do mercado" if d > 0 else ("🔽 Abaixo do mercado" if d < 0 else "➖ Igual ao mercado")
+            )
+            data_table(
+                df_comparativo,
+                key="comparativo_cotacoes",
+                column_config={
+                    "Produto cadastrado": st.column_config.TextColumn("Produto", pinned=True),
+                    "Situação": st.column_config.TextColumn("Situação"),
+                    "Preço cadastrado (R$)": st.column_config.NumberColumn("Preço cadastrado (R$)", format="localized"),
+                    "Cotação AgroDoc (R$)": st.column_config.NumberColumn("Cotação AgroDoc (R$)", format="localized"),
+                    "Diferença (R$)": st.column_config.NumberColumn("Diferença (R$)", format="localized"),
+                    "Diferença (%)": st.column_config.NumberColumn("Diferença (%)", format="%.1f%%"),
+                },
+            )
 
         if sem_referencia:
             st.caption(

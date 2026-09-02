@@ -9,7 +9,6 @@ import streamlit as st
 
 from app.compras.schemas.purchase_invoice import PurchaseInvoiceCreateSchema
 from components.compras.dialog_state import clear_dialog_state, open_dialog
-from components.shared.formatters import format_money
 from components.shared.screens import toast_error, toast_ok
 from services.compras_client import PurchasesClient
 
@@ -28,14 +27,19 @@ def render_invoices_section(client: PurchasesClient, order_id: int) -> None:
                     {
                         "Numero": inv.numero,
                         "Serie": inv.serie,
-                        "Emissao": inv.data_emissao.isoformat(),
-                        "Valor": format_money(float(inv.valor_total)),
+                        "Emissao": inv.data_emissao,
+                        "Valor": float(inv.valor_total),
                     }
                     for inv in invoices
                 ]
             ),
-            use_container_width=True,
             hide_index=True,
+            column_config={
+                "Numero": st.column_config.TextColumn("Número", pinned=True),
+                "Serie": st.column_config.TextColumn("Série"),
+                "Emissao": st.column_config.DateColumn("Emissão", format="DD/MM/YYYY"),
+                "Valor": st.column_config.NumberColumn("Valor (R$)", format="localized"),
+            },
         )
     else:
         st.caption("Nenhuma nota fiscal registrada.")

@@ -22,12 +22,19 @@ from components.manutencao import (
 )
 from components.manutencao.dialog_state import open_dialog
 from components.manutencao.tables import (
+    corretivas_column_config,
     corretivas_df,
+    maquinas_column_config,
     maquinas_df,
+    ordens_column_config,
     ordens_df,
+    planos_column_config,
     planos_df,
+    prestadores_column_config,
     prestadores_df,
+    preventivas_column_config,
     preventivas_df,
+    tipos_column_config,
     tipos_df,
 )
 from components.shared.screens import (
@@ -102,7 +109,7 @@ with tab_tipos:
         open_dialog("tipos", "create")
 
     df = filter_dataframe(tipos_df(tipos), query)
-    selected = data_table(df, key="manut_tipos")
+    selected = data_table(df, key="manut_tipos", column_config=tipos_column_config())
     action = row_actions(
         key="manut_tipos",
         selected_count=len(selected),
@@ -128,7 +135,7 @@ with tab_maquinas:
         open_dialog("maquinas", "create")
 
     df = filter_dataframe(maquinas_df(maquinas), query)
-    selected = data_table(df, key="manut_maquinas")
+    selected = data_table(df, key="manut_maquinas", column_config=maquinas_column_config())
     action = row_actions(
         key="manut_maquinas",
         selected_count=len(selected),
@@ -154,7 +161,7 @@ with tab_prestadores:
         open_dialog("prestadores", "create")
 
     df = filter_dataframe(prestadores_df(prestadores), query)
-    selected = data_table(df, key="manut_prestadores")
+    selected = data_table(df, key="manut_prestadores", column_config=prestadores_column_config())
     action = row_actions(
         key="manut_prestadores",
         selected_count=len(selected),
@@ -180,7 +187,7 @@ with tab_planos:
         open_dialog("planos", "create")
 
     df = filter_dataframe(planos_df(planos), query)
-    selected = data_table(df, key="manut_planos")
+    selected = data_table(df, key="manut_planos", column_config=planos_column_config())
     action = row_actions(
         key="manut_planos",
         selected_count=len(selected),
@@ -206,7 +213,7 @@ with tab_preventiva:
         open_dialog("preventivas", "create")
 
     df = filter_dataframe(preventivas_df(preventivas), query)
-    selected = data_table(df, key="manut_preventivas")
+    selected = data_table(df, key="manut_preventivas", column_config=preventivas_column_config())
     action = row_actions(
         key="manut_preventivas",
         selected_count=len(selected),
@@ -232,7 +239,7 @@ with tab_corretiva:
         open_dialog("corretivas", "create")
 
     df = filter_dataframe(corretivas_df(corretivas), query)
-    selected = data_table(df, key="manut_corretivas")
+    selected = data_table(df, key="manut_corretivas", column_config=corretivas_column_config())
     action = row_actions(
         key="manut_corretivas",
         selected_count=len(selected),
@@ -258,7 +265,7 @@ with tab_ordens:
         open_dialog("ordens", "create")
 
     df = filter_dataframe(ordens_df(ordens), query)
-    selected = data_table(df, key="manut_ordens")
+    selected = data_table(df, key="manut_ordens", column_config=ordens_column_config())
     action = row_actions(
         key="manut_ordens",
         selected_count=len(selected),

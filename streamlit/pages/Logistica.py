@@ -19,9 +19,13 @@ from components.logistica import (
 )
 from components.logistica.dialog_state import open_dialog
 from components.logistica.operation_tables import (
+    loads_view_column_config,
     loads_view_df,
+    locations_column_config,
     locations_df,
+    operations_column_config,
     operations_df,
+    vehicles_column_config,
     vehicles_df,
 )
 from components.shared.screens import (
@@ -61,7 +65,7 @@ with tab_ops:
         open_dialog("operacoes", "create")
 
     df = filter_dataframe(operations_df(operations), query)
-    selected = data_table(df, key="operacoes_grid")
+    selected = data_table(df, key="operacoes_grid", column_config=operations_column_config())
     action = row_actions(
         key="operacoes",
         selected_count=len(selected),
@@ -93,7 +97,7 @@ with tab_cargas:
         key="cargas_filter",
     )
     df = filter_dataframe(loads_view_df(loads), query or "")
-    selected = data_table(df, key="cargas_grid")
+    selected = data_table(df, key="cargas_grid", column_config=loads_view_column_config())
     col_info, col_view = st.columns([5, 1])
     with col_info:
         st.caption(f"{len(selected)} de {len(df)} linha(s) selecionada(s).")
@@ -123,7 +127,7 @@ with tab_veiculos:
         open_dialog("veiculos", "create")
 
     df = filter_dataframe(vehicles_df(vehicles), query)
-    selected = data_table(df, key="veiculos_grid")
+    selected = data_table(df, key="veiculos_grid", column_config=vehicles_column_config())
     action = row_actions(
         key="veiculos",
         selected_count=len(selected),
@@ -152,7 +156,7 @@ with tab_locais:
         open_dialog("locais", "create")
 
     df = filter_dataframe(locations_df(locations), query)
-    selected = data_table(df, key="locais_grid")
+    selected = data_table(df, key="locais_grid", column_config=locations_column_config())
     action = row_actions(
         key="locais",
         selected_count=len(selected),

@@ -13,6 +13,14 @@ STATUS_LABELS = {
     OrderStatus.CANCELADO: "Cancelado",
 }
 
+ORDER_STATUS_TONE = {
+    "Aberto": "blue",
+    "Aprovado": "orange",
+    "Parcialmente atendido": "orange",
+    "Atendido": "green",
+    "Cancelado": "gray",
+}
+
 REQUEST_STATUS_LABELS = {
     PurchaseRequestStatus.RASCUNHO: "Rascunho",
     PurchaseRequestStatus.ENVIADA: "Enviada",
@@ -21,10 +29,30 @@ REQUEST_STATUS_LABELS = {
     PurchaseRequestStatus.CANCELADA: "Cancelada",
 }
 
+REQUEST_STATUS_TONE = {
+    "Rascunho": "gray",
+    "Enviada": "blue",
+    "Aprovada": "green",
+    "Rejeitada": "red",
+    "Cancelada": "gray",
+}
+
 PURCHASE_TYPE_LABELS = {
     PurchaseType.INSUMO: "Insumo",
     PurchaseType.EQUIPAMENTO: "Equipamento",
 }
+
+
+ORDER_STATUS_OPTIONS = list(STATUS_LABELS.values())
+REQUEST_STATUS_OPTIONS = list(REQUEST_STATUS_LABELS.values())
+
+
+def order_status_label(status) -> str:
+    return STATUS_LABELS.get(status, getattr(status, "value", str(status)))
+
+
+def request_status_label(status) -> str:
+    return REQUEST_STATUS_LABELS.get(status, getattr(status, "value", str(status)))
 
 
 def product_unit(product: ProductOptionSchema) -> str:

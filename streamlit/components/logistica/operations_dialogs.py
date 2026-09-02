@@ -34,7 +34,12 @@ from components.logistica.loads_editor import (
     loads_data_editor,
     persist_load_rows,
 )
-from components.logistica.operation_tables import loads_view_df, weighings_view_df
+from components.logistica.operation_tables import (
+    loads_view_column_config,
+    loads_view_df,
+    weighings_view_column_config,
+    weighings_view_df,
+)
 from services.logistica_client import LogisticsApiError, LogisticsClient
 
 client = LogisticsClient()
@@ -298,7 +303,7 @@ def _view(scope: str, operation_id: int) -> None:
             )
 
     with tab_cargas:
-        st.dataframe(loads_view_df(loads), use_container_width=True, hide_index=True)
+        st.dataframe(loads_view_df(loads), hide_index=True, column_config=loads_view_column_config())
 
     with tab_pesagens:
         if not loads:
@@ -317,7 +322,9 @@ def _view(scope: str, operation_id: int) -> None:
                 st.error(exc.user_message)
                 return
             st.dataframe(
-                weighings_view_df(weighings), use_container_width=True, hide_index=True
+                weighings_view_df(weighings),
+                hide_index=True,
+                column_config=weighings_view_column_config(),
             )
 
     with tab_exp:
@@ -536,7 +543,7 @@ def _edit(scope: str, operation_id: int) -> None:
                 st.info(
                     "Cargas so podem ser alteradas com operacao Aberta ou Em andamento."
                 )
-            st.dataframe(loads_view_df(loads), use_container_width=True, hide_index=True)
+            st.dataframe(loads_view_df(loads), hide_index=True, column_config=loads_view_column_config())
 
     with tab_pesagens:
         if not loads:
@@ -561,7 +568,9 @@ def _edit(scope: str, operation_id: int) -> None:
                 return
             st.markdown("##### Historico")
             st.dataframe(
-                weighings_view_df(weighings), use_container_width=True, hide_index=True
+                weighings_view_df(weighings),
+                hide_index=True,
+                column_config=weighings_view_column_config(),
             )
             if active:
                 st.markdown("##### Registrar pesagem")

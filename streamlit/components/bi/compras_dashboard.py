@@ -20,7 +20,6 @@ from components.bi.widgets import (
     download_csv,
     fmt_brl,
     fmt_int,
-    fmt_qty,
     unit_label,
 )
 from components.shared.screens import setup_page, toast_error
@@ -216,41 +215,45 @@ def render() -> None:
     ticket_medio = (valor_total / n_pedidos) if n_pedidos > 0 else None
     ticket_medio_prev = (valor_prev / n_pedidos_prev) if n_pedidos_prev > 0 else None
 
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    col_m1.metric(
-        "Valor comprado",
-        fmt_brl(valor_total),
-        delta=delta_label(valor_total, valor_prev, formatter=fmt_brl) if has_previous else None,
-    )
-    col_m2.metric(
-        "N de pedidos",
-        str(n_pedidos),
-        delta=(
-            delta_label(n_pedidos, n_pedidos_prev, formatter=fmt_int)
-            if has_previous
-            else None
-        ),
-        help="Quantidade de pedidos no recorte. Independente da unidade do produto.",
-    )
-    col_m3.metric(
-        "Fornecedores",
-        str(n_fornecedores),
-        delta=(
-            delta_label(n_fornecedores, n_fornecedores_prev, formatter=fmt_int)
-            if has_previous
-            else None
-        ),
-    )
-    col_m4.metric(
-        "Ticket medio",
-        fmt_brl(ticket_medio) if ticket_medio is not None else "—",
-        delta=(
-            delta_label(ticket_medio, ticket_medio_prev, formatter=fmt_brl)
-            if has_previous
-            else None
-        ),
-        help="Valor comprado dividido pelo numero de pedidos. Valido com qualquer mix de produtos.",
-    )
+    with st.container(horizontal=True):
+        st.metric(
+            "Valor comprado",
+            fmt_brl(valor_total),
+            delta=delta_label(valor_total, valor_prev, formatter=fmt_brl) if has_previous else None,
+            border=True,
+        )
+        st.metric(
+            "N de pedidos",
+            str(n_pedidos),
+            delta=(
+                delta_label(n_pedidos, n_pedidos_prev, formatter=fmt_int)
+                if has_previous
+                else None
+            ),
+            help="Quantidade de pedidos no recorte. Independente da unidade do produto.",
+            border=True,
+        )
+        st.metric(
+            "Fornecedores",
+            str(n_fornecedores),
+            delta=(
+                delta_label(n_fornecedores, n_fornecedores_prev, formatter=fmt_int)
+                if has_previous
+                else None
+            ),
+            border=True,
+        )
+        st.metric(
+            "Ticket medio",
+            fmt_brl(ticket_medio) if ticket_medio is not None else "—",
+            delta=(
+                delta_label(ticket_medio, ticket_medio_prev, formatter=fmt_brl)
+                if has_previous
+                else None
+            ),
+            help="Valor comprado dividido pelo numero de pedidos. Valido com qualquer mix de produtos.",
+            border=True,
+        )
 
     col_rank, col_secundario = st.columns(2)
     with col_rank:
@@ -379,12 +382,6 @@ def render() -> None:
 
     detalhe = df.copy()
     export = detalhe.copy()
-    detalhe["Data"] = detalhe["Data"].map(
-        lambda d: d.strftime("%d/%m/%Y") if d else ""
-    )
-    detalhe["Volume"] = detalhe["Volume"].map(fmt_qty)
-    detalhe["Valor"] = detalhe["Valor"].map(fmt_brl)
-    detalhe["Custo unitario"] = detalhe["Custo unitario"].map(fmt_brl)
     export["Data"] = export["Data"].map(
         lambda d: d.strftime("%d/%m/%Y") if d else ""
     )
@@ -400,8 +397,17 @@ def render() -> None:
     ]
     st.dataframe(
         detalhe[colunas],
-        use_container_width=True,
         hide_index=True,
+        column_config={
+            "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+            "Safra": st.column_config.TextColumn("Safra", pinned=True),
+            "Fornecedor": st.column_config.TextColumn("Fornecedor"),
+            "Produto": st.column_config.TextColumn("Produto"),
+            "Volume": st.column_config.NumberColumn("Volume", format="localized"),
+            "Unidade": st.column_config.TextColumn("Unidade"),
+            "Valor": st.column_config.NumberColumn("Valor (R$)", format="localized"),
+            "Custo unitario": st.column_config.NumberColumn("Custo unitário (R$)", format="localized"),
+        },
     )
     download_csv(
         export[colunas],

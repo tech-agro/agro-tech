@@ -20,14 +20,14 @@ from components.estoque import (
 )
 from components.estoque import lotes_dialogs
 from components.estoque.dialog_state import open_dialog
-from components.estoque.estoques_tables import estoques_df
+from components.estoque.estoques_tables import estoques_column_config, estoques_df
 from components.estoque.formatters import estoque_label
-from components.estoque.locais_tables import locais_df
-from components.estoque.lotes_tables import lotes_df
-from components.estoque.ocupacao import localizacao_lotes_df, render_ocupacao_locais
-from components.estoque.certificacoes_tables import certificacoes_df
-from components.estoque.saldos_tables import saldos_df
-from components.estoque.movimentacoes_tables import movimentacoes_df
+from components.estoque.locais_tables import locais_column_config, locais_df
+from components.estoque.lotes_tables import lotes_column_config, lotes_df
+from components.estoque.ocupacao import localizacao_lotes_column_config, localizacao_lotes_df, render_ocupacao_locais
+from components.estoque.certificacoes_tables import certificacoes_column_config, certificacoes_df
+from components.estoque.saldos_tables import saldos_column_config, saldos_df
+from components.estoque.movimentacoes_tables import movimentacoes_column_config, movimentacoes_df
 from components.shared.screens import (
     crud_toolbar,
     data_table,
@@ -94,7 +94,7 @@ with tab_visao_geral:
         key="localizacao_filter",
     )
     df_localizacao = filter_dataframe(localizacao_lotes_df(localizacoes), query)
-    data_table(df_localizacao, key="localizacao_grid")
+    data_table(df_localizacao, key="localizacao_grid", column_config=localizacao_lotes_column_config())
 
 
 # ----------------------------------------------------------------------
@@ -117,7 +117,7 @@ with tab_lotes:
             key=f"{key}_filter",
         )
         df = filter_dataframe(lotes_df(lotes), query)
-        selected = data_table(df, key=key)
+        selected = data_table(df, key=key, column_config=lotes_column_config())
         action = row_actions(
             key=key,
             selected_count=len(selected),
@@ -165,7 +165,7 @@ with tab_locais:
         open_dialog("locais", "create")
 
     df = filter_dataframe(locais_df(locais), query)
-    selected = data_table(df, key="locais_grid")
+    selected = data_table(df, key="locais_grid", column_config=locais_column_config())
     action = row_actions(
         key="locais",
         selected_count=len(selected),
@@ -202,7 +202,7 @@ with tab_estoques:
         open_dialog("estoques", "create")
 
     df = filter_dataframe(estoques_df(estoques), query)
-    selected = data_table(df, key="estoques_grid")
+    selected = data_table(df, key="estoques_grid", column_config=estoques_column_config())
     action = row_actions(
         key="estoques",
         selected_count=len(selected),
@@ -238,7 +238,7 @@ with tab_certificacoes:
         open_dialog("certificacoes", "create")
 
     df = filter_dataframe(certificacoes_df(certificacoes), query)
-    selected = data_table(df, key="certificacoes_grid")
+    selected = data_table(df, key="certificacoes_grid", column_config=certificacoes_column_config())
     action = row_actions(
         key="certificacoes",
         selected_count=len(selected),
@@ -282,7 +282,7 @@ with tab_saldo:
             toast_error(exc)
             st.stop()
 
-        st.dataframe(saldos_df(saldos), use_container_width=True, hide_index=True)
+        st.dataframe(saldos_df(saldos), hide_index=True, column_config=saldos_column_config())
 
 
 # ----------------------------------------------------------------------
@@ -314,7 +314,9 @@ with tab_mov:
             st.stop()
 
         st.dataframe(
-            movimentacoes_df(movimentacoes), use_container_width=True, hide_index=True
+            movimentacoes_df(movimentacoes),
+            hide_index=True,
+            column_config=movimentacoes_column_config(),
         )
 
 

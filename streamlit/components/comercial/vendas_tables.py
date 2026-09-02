@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import streamlit as st
+
+from components.shared.palette import badge_column, badge_value
 
 STATUS_RECEBIMENTO = {
     "ABERTA": "Aberta",
@@ -10,6 +13,16 @@ STATUS_RECEBIMENTO = {
     "RECEBIDA": "Recebida",
     "VENCIDA": "Vencida",
     "CANCELADA": "Cancelada",
+}
+
+_RECEBIMENTO_OPTIONS = ["Aberta", "Parcial", "Recebida", "Vencida", "Cancelada", "—"]
+_RECEBIMENTO_TONE = {
+    "Aberta": "blue",
+    "Parcial": "orange",
+    "Recebida": "green",
+    "Vencida": "red",
+    "Cancelada": "gray",
+    "—": "gray",
 }
 
 
@@ -26,19 +39,29 @@ def vendas_df(
     linhas = []
     for v in vendas:
         conta = conta_por_venda.get(v.id_venda)
+        status = STATUS_RECEBIMENTO.get(conta.status, conta.status) if conta else "—"
         linhas.append(
             {
                 "ID": v.id_venda,
                 "Cliente": cliente_por_id.get(v.id_cliente, f"#{v.id_cliente}"),
                 "Valor total": float(v.valor_total),
-                "Data da venda": v.data_venda.strftime("%d/%m/%Y") if v.data_venda else "",
-                "Recebimento": STATUS_RECEBIMENTO.get(conta.status, conta.status)
-                if conta
-                else "—",
+                "Data da venda": v.data_venda,
+                "Recebimento": badge_value(status),
                 "Saldo a receber": float(conta.saldo) if conta and conta.saldo else 0.0,
             }
         )
     return pd.DataFrame(linhas)
+
+
+def vendas_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "Cliente": st.column_config.TextColumn("Cliente", pinned=True),
+        "Valor total": st.column_config.NumberColumn("Valor total (R$)", format="localized"),
+        "Data da venda": st.column_config.DateColumn("Data da venda", format="DD/MM/YYYY"),
+        "Recebimento": badge_column("Recebimento", _RECEBIMENTO_OPTIONS, _RECEBIMENTO_TONE, width="small"),
+        "Saldo a receber": st.column_config.NumberColumn("Saldo a receber (R$)", format="localized"),
+    }
 
 
 def itens_venda_df(itens, produto_por_id: dict[int, str] | None = None) -> pd.DataFrame:

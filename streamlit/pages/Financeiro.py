@@ -22,11 +22,11 @@ from components.financeiro import (
 
 from components.financeiro.dialog_state import open_dialog
 
-from components.financeiro.conta_pagar_tables import contas_pagar_df
-from components.financeiro.pagamento_tables import pagamentos_df
-from components.financeiro.conta_receber_tables import contas_receber_dataframe
-from components.financeiro.recebimento_tables import recebimentos_df
-from components.financeiro.fluxo_caixa_tables import fluxo_caixa_df
+from components.financeiro.conta_pagar_tables import contas_pagar_column_config, contas_pagar_df
+from components.financeiro.pagamento_tables import pagamentos_column_config, pagamentos_df
+from components.financeiro.conta_receber_tables import contas_receber_column_config, contas_receber_dataframe
+from components.financeiro.recebimento_tables import recebimentos_column_config, recebimentos_df
+from components.financeiro.fluxo_caixa_tables import fluxo_caixa_column_config, fluxo_caixa_df
 from components.financeiro import intelligence
 
 from components.shared.screens import (
@@ -153,6 +153,7 @@ with tab_pagar:
     selected = data_table(
         df,
         key="contas_pagar_grid",
+        column_config=contas_pagar_column_config(),
     )
 
 
@@ -230,6 +231,7 @@ with tab_pagamentos:
     selected = data_table(
         df,
         key="pagamentos_grid",
+        column_config=pagamentos_column_config(),
     )
 
 
@@ -307,6 +309,7 @@ with tab_receber:
     selected = data_table(
         df,
         key="contas_receber_grid",
+        column_config=contas_receber_column_config(),
     )
 
 
@@ -384,6 +387,7 @@ with tab_recebimentos:
     selected = data_table(
         df,
         key="recebimentos_grid",
+        column_config=recebimentos_column_config(),
     )
 
 
@@ -464,6 +468,6 @@ with tab_fluxo:
 
     st.dataframe(
         fluxo_caixa_df(fluxo),
-        use_container_width=True,
         hide_index=True,
+        column_config=fluxo_caixa_column_config(),
     )

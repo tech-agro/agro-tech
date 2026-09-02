@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import pandas as pd
+import streamlit as st
 
 from components.fitossanidade.formatters import kind_label
+from components.shared.palette import badge_column, badge_value
+
+_SEVERITY_OPTIONS = ["Baixo", "Medio", "Alto", "Critico"]
+_SEVERITY_TONE = {"Baixo": "green", "Medio": "orange", "Alto": "orange", "Critico": "red"}
 
 
 def _blank(value) -> str:
@@ -43,16 +48,28 @@ def controls_df(controls) -> pd.DataFrame:
                 "Produto": _blank(c.plantio_produto_nome),
                 "ID funcionario": c.id_funcionario,
                 "Funcionario": _blank(c.funcionario_nome),
-                "Identificacao": (
-                    c.dt_identificacao.isoformat() if c.dt_identificacao else ""
-                ),
-                "Severidade": _blank(c.nivel_severidade),
+                "Identificacao": c.dt_identificacao,
+                "Severidade": badge_value(c.nivel_severidade) if c.nivel_severidade else [],
                 "Area afetada (ha)": _blank_num(c.area_afetada_hectares),
                 "Recomendacao": _blank(c.recomendacao),
             }
             for c in controls
         ]
     )
+
+
+def controls_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "ID plantio": st.column_config.NumberColumn("Plantio", format="%d"),
+        "Produto": st.column_config.TextColumn("Produto", pinned=True),
+        "ID funcionario": None,
+        "Funcionario": st.column_config.TextColumn("Funcionário"),
+        "Identificacao": st.column_config.DateColumn("Identificação", format="DD/MM/YYYY"),
+        "Severidade": badge_column("Severidade", _SEVERITY_OPTIONS, _SEVERITY_TONE, width="small"),
+        "Area afetada (ha)": st.column_config.NumberColumn("Área afetada (ha)", format="localized"),
+        "Recomendacao": st.column_config.TextColumn("Recomendação", width="large"),
+    }
 
 
 def occurrences_view_df(occurrences) -> pd.DataFrame:
@@ -79,6 +96,16 @@ def occurrences_view_df(occurrences) -> pd.DataFrame:
     )
 
 
+def occurrences_view_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "ID agente": None,
+        "Agente": st.column_config.TextColumn("Agente", pinned=True),
+        "Nivel de infestacao": st.column_config.TextColumn("Nível de infestação"),
+        "Metodo de controle": st.column_config.TextColumn("Método de controle"),
+    }
+
+
 def applications_view_df(applications) -> pd.DataFrame:
     columns = [
         "ID",
@@ -103,12 +130,26 @@ def applications_view_df(applications) -> pd.DataFrame:
                 "Maquina": _blank(a.maquina_nome),
                 "Dose/ha": _blank_num(a.dose_hectare),
                 "Volume aplicado": _blank_num(a.volume_aplicado),
-                "Data aplicacao": a.dt_aplicacao.isoformat() if a.dt_aplicacao else "",
-                "Data carencia": a.dt_carencia.isoformat() if a.dt_carencia else "",
+                "Data aplicacao": a.dt_aplicacao,
+                "Data carencia": a.dt_carencia,
             }
             for a in applications
         ]
     )
+
+
+def applications_view_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "ID insumo": None,
+        "Insumo": st.column_config.TextColumn("Insumo", pinned=True),
+        "ID maquina": None,
+        "Maquina": st.column_config.TextColumn("Máquina"),
+        "Dose/ha": st.column_config.NumberColumn("Dose/ha", format="localized"),
+        "Volume aplicado": st.column_config.NumberColumn("Volume aplicado", format="localized"),
+        "Data aplicacao": st.column_config.DateColumn("Data da aplicação", format="DD/MM/YYYY"),
+        "Data carencia": st.column_config.DateColumn("Data de carência", format="DD/MM/YYYY"),
+    }
 
 
 def agents_df(agents) -> pd.DataFrame:
@@ -141,3 +182,17 @@ def agents_df(agents) -> pd.DataFrame:
             for a in agents
         ]
     )
+
+
+def agents_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "Tipo": st.column_config.TextColumn("Tipo", pinned=True),
+        "Nome comum": st.column_config.TextColumn("Nome comum", pinned=True),
+        "Nome cientifico": st.column_config.TextColumn("Nome científico"),
+        "Tipo praga": st.column_config.TextColumn("Tipo de praga"),
+        "Habito alimentar": st.column_config.TextColumn("Hábito alimentar"),
+        "Agente causador": st.column_config.TextColumn("Agente causador"),
+        "Sintomas": st.column_config.TextColumn("Sintomas", width="large"),
+        "Condicao favoravel": st.column_config.TextColumn("Condição favorável", width="large"),
+    }

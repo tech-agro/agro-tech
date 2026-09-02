@@ -13,11 +13,13 @@ import streamlit as st
 
 from components.bi.filters import render_filter_bar
 from components.bi.widgets import download_csv, fmt_brl
-from components.bi.charts import bar_chart
+from components.bi.charts import bar_chart, donut_chart
 from components.shared.screens import setup_page, toast_error
+from components.shared.palette import badge_column, badge_value, semantic
 from components.manutencao import lookups as manut_lookups
-from components.shared.charts import is_dark_theme
 from services import manutencao_client as manutencao_api
+
+_TIPO_COLOR = {"Preventiva": "green", "Corretiva": "orange"}
 
 
 @st.cache_data(ttl=60)
@@ -143,20 +145,31 @@ def render() -> None:
     preventive_cost = float(df_man[df_man["Tipo"] == "Preventiva"]["Custo"].sum()) if not df_man.empty else 0.0
     corrective_cost = float(df_man[df_man["Tipo"] == "Corretiva"]["Custo"].sum()) if not df_man.empty else 0.0
 
-    # KPIs
-    k1, k2, k3 = st.columns([2, 2, 2])
-    k1.metric("Custo total (CONCLUIDA)", fmt_brl(total_cost))
-    k2.metric("Preventiva (R$)", fmt_brl(preventive_cost))
-    k3.metric("Corretiva (R$)", fmt_brl(corrective_cost))
-
-    # Preventiva % vs Corretiva % (by cost)
-    pct_text = "—"
+    # KPIs (IND-17 custo por máquina, IND-18 proporção preventiva x corretiva)
     denom = preventive_cost + corrective_cost
-    if denom > 0:
-        pct_text = f"Preventiva: {round(100 * (preventive_cost / denom), 1)}% — Corretiva: {round(100 * (corrective_cost / denom), 1)}%"
-    st.caption(pct_text)
-
-    st.divider()
+    preventiva_pct = (100 * preventive_cost / denom) if denom > 0 else None
+    with st.container(horizontal=True):
+        st.metric(
+            "Custo total concluído",
+            fmt_brl(total_cost),
+            border=True,
+        )
+        st.metric(
+            "Preventiva (R$)",
+            fmt_brl(preventive_cost),
+            border=True,
+        )
+        st.metric(
+            "Corretiva (R$)",
+            fmt_brl(corrective_cost),
+            border=True,
+        )
+        st.metric(
+            "Quota preventiva",
+            f"{preventiva_pct:.0f}%" if preventiva_pct is not None else "—",
+            help="IND-18 — quanto maior, melhor o perfil de manutenção (menos imprevistos).",
+            border=True,
+        )
 
     if df_man.empty:
         st.info("Nenhum registro de manutenção concluída encontrado para os filtros selecionados.")
@@ -166,34 +179,39 @@ def render() -> None:
     per_machine = (
         df_man.groupby("Maquina", as_index=False).agg({"Custo": "sum"}).sort_values(by="Custo", ascending=False)
     )
-    st.subheader("Custo por máquina")
-    bar_chart(per_machine, x="Maquina", y="Custo", title="Custo por máquina", x_title="Máquina", y_title="Custo (R$)")
 
-    st.subheader("Preventiva x Corretiva (por custo)")
-    try:
-        import plotly.express as px  # local import to keep module-level dependencies small
-    except Exception:
-        st.error(
-            "Biblioteca plotly nao encontrada. Instale com: pip install plotly\ne adicione 'plotly' ao seu requirements.txt ou pyproject.toml."
+    col_custo, col_perfil = st.columns([3, 2])
+    with col_custo:
+        st.subheader("Custo por máquina")
+        bar_chart(per_machine, x="Maquina", y="Custo", x_title="Máquina", y_title="Custo (R$)")
+    with col_perfil:
+        st.subheader("Preventiva x Corretiva")
+        pie_df = df_man.groupby("Tipo", as_index=False).agg({"Custo": "sum"}).reset_index(drop=True)
+        pie_df["Custo"] = pd.to_numeric(pie_df["Custo"].fillna(0.0), errors="coerce").fillna(0.0)
+        donut_chart(
+            pie_df,
+            category="Tipo",
+            value="Custo",
+            color_map={"Preventiva": semantic("green"), "Corretiva": semantic("orange")},
         )
-        return
-
-    pie_df = df_man.groupby("Tipo", as_index=False).agg({"Custo": "sum"}).reset_index(drop=True)
-    pie_df["Custo"] = pd.to_numeric(pie_df["Custo"].fillna(0.0), errors="coerce").fillna(0.0)
-    pie = px.pie(pie_df, names="Tipo", values="Custo", title="Preventiva vs Corretiva", template=("plotly_dark" if is_dark_theme() else "plotly_white"))
-    st.plotly_chart(pie, use_container_width=True, config={"displayModeBar": False})
-
-    st.divider()
 
     st.subheader("Detalhamento de manutenções")
     display = df_man.copy()
-    # Ensure column exists and is a Series, then coerce to numeric and fill NaNs
     if "Custo" not in display.columns:
         display["Custo"] = 0.0
     display["Custo"] = pd.to_numeric(display["Custo"], errors="coerce").fillna(0.0)
-    # Now safe to format values as BRL
-    display["Custo"] = display["Custo"].apply(lambda v: fmt_brl(float(v)))
-    st.dataframe(display.sort_values(["Data"], ascending=False), use_container_width=True, hide_index=True)
+    display["Tipo"] = display["Tipo"].apply(badge_value)
+    st.dataframe(
+        display.sort_values(["Data"], ascending=False),
+        hide_index=True,
+        column_config={
+            "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True),
+            "Maquina": st.column_config.TextColumn("Máquina", pinned=True),
+            "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+            "Tipo": badge_column("Tipo", ["Preventiva", "Corretiva"], _TIPO_COLOR, width="small"),
+            "Custo": st.column_config.NumberColumn("Custo (R$)", format="localized"),
+        },
+    )
 
     download_csv(df_man.rename(columns={"Maquina": "maquina", "Data": "data", "Tipo": "tipo", "Custo": "custo"}), filename="dashboard_manutencao.csv", key="bi_manut_csv")
 
@@ -216,6 +234,6 @@ def render() -> None:
                 mask &= ords[col_date].notna() & (ords[col_date] <= end)
             ords = ords[mask]
         st.subheader("Ordens de serviço")
-        st.write(f"Total de ordens no período: {len(ords)}")
-        st.dataframe(ords, use_container_width=True, hide_index=True)
+        st.caption(f"{len(ords)} ordem(ns) no período selecionado.")
+        st.dataframe(ords, hide_index=True)
 

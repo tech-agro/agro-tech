@@ -10,6 +10,7 @@ from app.comercial.models import ItemVendaEntrada, NovaVenda
 from components.comercial.dialog_state import clear_dialog_state, get_dialog
 from components.comercial.formatters import centro_custo_label, cliente_label, lote_label, produto_label
 from components.comercial.vendas_tables import STATUS_RECEBIMENTO, itens_venda_df
+from components.shared.formatters import format_money
 from services.comercial_client import ComercialApiError, ComercialClient
 from services.estoque_client import EstoqueApiError, EstoqueClient
 from services.financeiro_client import FinanceiroApiError, FinanceiroClient
@@ -192,7 +193,7 @@ def _view_dialog(scope: str, id_venda: int) -> None:
             "Recebimento", STATUS_RECEBIMENTO.get(conta.status, conta.status)
         )
         if conta.saldo:
-            st.caption(f"Saldo a receber: R$ {float(conta.saldo):.2f} · vencimento {conta.vencimento}")
+            st.caption(f"Saldo a receber: {format_money(float(conta.saldo))} · vencimento {conta.vencimento}")
     else:
         col_status.metric("Recebimento", "—")
 
@@ -203,9 +204,16 @@ def _view_dialog(scope: str, id_venda: int) -> None:
 
     st.caption("Itens")
     st.dataframe(
-        itens_venda_df(venda.itens, produto_por_id), use_container_width=True, hide_index=True
+        itens_venda_df(venda.itens, produto_por_id),
+        hide_index=True,
+        column_config={
+            "Produto": st.column_config.TextColumn("Produto", pinned=True),
+            "Lote": st.column_config.TextColumn("Lote"),
+            "Quantidade": st.column_config.NumberColumn("Quantidade", format="localized"),
+            "Valor unitário": st.column_config.NumberColumn("Valor unitário (R$)", format="localized"),
+        },
     )
 
-    if st.button("Fechar", use_container_width=True):
+    if st.button("Fechar", width="stretch"):
         clear_dialog_state(scope, id_venda)
         st.rerun()

@@ -60,5 +60,8 @@ def delta_label(
     diff = float(current) - float(previous)
     if abs(diff) < 1e-9:
         return f"{formatter(0.0)} vs periodo anterior"
-    sign = "+" if diff > 0 else ""
-    return f"{sign}{formatter(diff)} vs periodo anterior"
+    # The sign must be the string's very first character — st.metric infers
+    # the up/down arrow from it, and formatters like fmt_brl put any "-"
+    # after a "R$ " prefix, which Streamlit never sees.
+    sign = "+" if diff > 0 else "-"
+    return f"{sign}{formatter(abs(diff))} vs periodo anterior"

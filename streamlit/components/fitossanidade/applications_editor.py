@@ -384,7 +384,6 @@ def applications_data_editor(
     edited = st.data_editor(
         base,
         num_rows="dynamic",
-        use_container_width=True,
         hide_index=True,
         disabled=disabled_cols,
         key=editor_key,

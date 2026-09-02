@@ -34,6 +34,7 @@ def _cores() -> tuple[str, str]:
 
 
 from components.bi.widgets import fmt_brl
+from components.shared.palette import badge_column, badge_value
 
 
 def render_kpis(contas_pagar: list, contas_receber: list) -> None:
@@ -41,16 +42,21 @@ def render_kpis(contas_pagar: list, contas_receber: list) -> None:
     a_pagar = sum(float(c.saldo) for c in contas_pagar if c.status in _ABERTOS_PAGAR)
     recebido = sum(float(c.valor_recebido) for c in contas_receber)
     pago = sum(float(c.valor) - float(c.saldo) for c in contas_pagar)
+    saldo_projetado = a_receber - a_pagar
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("A receber (em aberto)", fmt_brl(a_receber))
-    col2.metric("A pagar (em aberto)", fmt_brl(a_pagar))
-    col3.metric("Saldo projetado", fmt_brl(a_receber - a_pagar))
-
-    col4, col5 = st.columns([1, 2])
-    col4.metric("Já recebido", fmt_brl(recebido))
-    with col5:
-        st.metric("Já pago", fmt_brl(pago))
+    with st.container(horizontal=True):
+        st.metric("A receber (em aberto)", fmt_brl(a_receber), border=True)
+        st.metric("A pagar (em aberto)", fmt_brl(a_pagar), border=True)
+        st.metric(
+            "Saldo projetado",
+            fmt_brl(saldo_projetado),
+            delta="Superávit" if saldo_projetado >= 0 else "Déficit",
+            delta_color="normal" if saldo_projetado >= 0 else "inverse",
+            help="A receber (em aberto) − A pagar (em aberto). Positivo é saudável.",
+            border=True,
+        )
+        st.metric("Já recebido", fmt_brl(recebido), border=True)
+        st.metric("Já pago", fmt_brl(pago), border=True)
 
 def render_fluxo_chart(fluxo: list) -> None:
     teal, amber = _cores()
@@ -90,7 +96,7 @@ def render_fluxo_chart(fluxo: list) -> None:
         .properties(height=280)
     )
     zero_rule = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(color="gray", strokeWidth=1).encode(y="y:Q")
-    st.altair_chart(chart + zero_rule, use_container_width=True)
+    st.altair_chart(chart + zero_rule)
 
 
 def _bucket(vencimento: date | None, hoje: date) -> str | None:
@@ -152,7 +158,7 @@ def render_aging_chart(contas_pagar: list, contas_receber: list) -> None:
         )
         .properties(height=300)
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart)
 
     vencidas = [l for l in linhas if l["bucket"] == "Vencidas"]
     if vencidas:
@@ -160,6 +166,15 @@ def render_aging_chart(contas_pagar: list, contas_receber: list) -> None:
         st.error(
             f"{_brl(total_vencido)} em contas já vencidas — priorize a regularização."
         )
+
+
+_TIPO_TONE = {"A pagar": "orange", "A receber": "blue"}
+
+
+def _humanize_origem(origem: str | None) -> str:
+    if not origem:
+        return "-"
+    return " ".join(word.capitalize() for word in origem.replace("_", " ").split())
 
 
 def render_criticas_table(contas_pagar: list, contas_receber: list) -> None:
@@ -170,7 +185,7 @@ def render_criticas_table(contas_pagar: list, contas_receber: list) -> None:
             linhas.append(
                 {
                     "Tipo": "A pagar",
-                    "Origem": (c.origem or "-").capitalize(),
+                    "Origem": _humanize_origem(c.origem),
                     "Vencimento": c.vencimento,
                     "Dias em atraso": (hoje - c.vencimento).days,
                     "Saldo": float(c.saldo),
@@ -193,6 +208,18 @@ def render_criticas_table(contas_pagar: list, contas_receber: list) -> None:
         return
 
     df = pd.DataFrame(linhas).sort_values("Dias em atraso", ascending=False)
-    df["Vencimento"] = pd.to_datetime(df["Vencimento"]).dt.strftime("%d/%m/%Y")
     df["Saldo"] = df["Saldo"].astype(float)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    df["Tipo"] = df["Tipo"].apply(badge_value)
+    st.dataframe(
+        df,
+        hide_index=True,
+        column_config={
+            "Tipo": badge_column("Tipo", ["A pagar", "A receber"], _TIPO_TONE, width="small"),
+            "Origem": st.column_config.TextColumn("Origem"),
+            "Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY"),
+            "Dias em atraso": st.column_config.ProgressColumn(
+                "Dias em atraso", format="%d dias", min_value=0, max_value=60, color="red",
+            ),
+            "Saldo": st.column_config.NumberColumn("Saldo (R$)", format="localized"),
+        },
+    )

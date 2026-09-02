@@ -438,58 +438,63 @@ def render() -> None:
         float(pd.Series(giro_prev_values).median()) if giro_prev_values else None
     )
 
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    if filtros.product:
-        unidade = None
-        if id_produtos:
-            unidade = single_unit({unit_by_product.get(pid) for pid in id_produtos})
-        unidade = unidade or estoque_unidade
-        col_m1.metric(
-            "Estoque total",
-            f"{fmt_qty(estoque_total)} {unidade}" if unidade else fmt_qty(estoque_total),
-            delta=delta_label(estoque_total, estoque_prev_total, formatter=fmt_qty),
+    with st.container(horizontal=True):
+        if filtros.product:
+            unidade = None
+            if id_produtos:
+                unidade = single_unit({unit_by_product.get(pid) for pid in id_produtos})
+            unidade = unidade or estoque_unidade
+            st.metric(
+                "Estoque total",
+                f"{fmt_qty(estoque_total)} {unidade}" if unidade else fmt_qty(estoque_total),
+                delta=delta_label(estoque_total, estoque_prev_total, formatter=fmt_qty),
+                help=(
+                    "Saldo atual do produto filtrado, na unidade cadastrada. "
+                    "Delta em relacao ao estoque no fim do periodo anterior."
+                ),
+                border=True,
+            )
+        else:
+            st.metric(
+                "Produtos em estoque",
+                str(n_produtos),
+                delta=delta_label(n_produtos, n_produtos_prev, formatter=fmt_int),
+                help=(
+                    "Produtos distintos com saldo no recorte. "
+                    "Nao soma kg, L e sc no mesmo total: filtre um produto para ver o estoque."
+                ),
+                border=True,
+            )
+        st.metric(
+            "Mediana do giro",
+            fmt_qty(giro_mediana) if giro_mediana is not None else "—",
+            delta=delta_label(giro_mediana, giro_mediana_prev, formatter=fmt_qty),
             help=(
-                "Saldo atual do produto filtrado, na unidade cadastrada. "
-                "Delta em relacao ao estoque no fim do periodo anterior."
+                "Mediana do giro por produto (saidas do periodo / estoque atual). "
+                "Nao e media ponderada pelo volume: um insumo de alto giro nao mascara os demais."
             ),
+            border=True,
         )
-    else:
-        col_m1.metric(
-            "Produtos em estoque",
-            str(n_produtos),
-            delta=delta_label(n_produtos, n_produtos_prev, formatter=fmt_int),
+        st.metric(
+            "Itens criticos",
+            str(len(critical_ids)),
+            delta=delta_label(len(critical_ids), len(critical_prev), formatter=fmt_int),
+            delta_color="inverse",
             help=(
-                "Produtos distintos com saldo no recorte. "
-                "Nao soma kg, L e sc no mesmo total: filtre um produto para ver o estoque."
+                f"Produto entra se: cobertura menor que {_COVER_DAYS} dias de saida "
+                "(estoque / saida diaria do periodo), ruptura no periodo "
+                "(estoque zerado com saida), ou lote bloqueado/em analise."
             ),
+            border=True,
         )
-    col_m2.metric(
-        "Mediana do giro",
-        fmt_qty(giro_mediana) if giro_mediana is not None else "—",
-        delta=delta_label(giro_mediana, giro_mediana_prev, formatter=fmt_qty),
-        help=(
-            "Mediana do giro por produto (saidas do periodo / estoque atual). "
-            "Nao e media ponderada pelo volume: um insumo de alto giro nao mascara os demais."
-        ),
-    )
-    col_m3.metric(
-        "Itens criticos",
-        str(len(critical_ids)),
-        delta=delta_label(len(critical_ids), len(critical_prev), formatter=fmt_int),
-        delta_color="inverse",
-        help=(
-            f"Produto entra se: cobertura menor que {_COVER_DAYS} dias de saida "
-            "(estoque / saida diaria do periodo), ruptura no periodo "
-            "(estoque zerado com saida), ou lote bloqueado/em analise."
-        ),
-    )
-    col_m4.metric(
-        "Vencendo",
-        str(len(vencendo_filtrados)),
-        delta=delta_label(len(vencendo_filtrados), len(vencendo_prev), formatter=fmt_int),
-        delta_color="inverse",
-        help=f"Lotes com validade nos proximos {_EXPIRY_DAYS} dias a partir do fim do periodo.",
-    )
+        st.metric(
+            "Vencendo",
+            str(len(vencendo_filtrados)),
+            delta=delta_label(len(vencendo_filtrados), len(vencendo_prev), formatter=fmt_int),
+            delta_color="inverse",
+            help=f"Lotes com validade nos proximos {_EXPIRY_DAYS} dias a partir do fim do periodo.",
+            border=True,
+        )
     st.caption(
         "Itens criticos: cobertura < 15 dias de saida, ruptura no periodo "
         "ou lote bloqueado/em analise."
@@ -617,10 +622,10 @@ def render() -> None:
             {
                 "Lote": row.codigo,
                 "Produto": row.produto,
-                "Quantidade": fmt_qty(float(row.quantidade)),
+                "Quantidade": float(row.quantidade),
                 "Unidade": unidade,
                 "Status": [status_label] if status_label else [],
-                "Validade": validade.strftime("%d/%m/%Y") if validade else "",
+                "Validade": validade,
             }
         )
         export_rows.append(
@@ -635,15 +640,20 @@ def render() -> None:
         )
     st.dataframe(
         pd.DataFrame(detalhe_rows),
-        use_container_width=True,
         hide_index=True,
         column_config={
+            "Lote": st.column_config.TextColumn("Lote", pinned=True),
+            "Produto": st.column_config.TextColumn("Produto"),
+            "Quantidade": st.column_config.NumberColumn("Quantidade", format="localized"),
+            "Unidade": st.column_config.TextColumn("Unidade"),
             "Status": st.column_config.MultiselectColumn(
                 "Status",
                 options=_STATUS_OPTIONS,
                 color=_STATUS_COLORS,
                 disabled=True,
+                width="small",
             ),
+            "Validade": st.column_config.DateColumn("Validade", format="DD/MM/YYYY"),
         },
     )
     download_csv(

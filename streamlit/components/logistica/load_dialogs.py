@@ -6,7 +6,7 @@ import streamlit as st
 
 from components.logistica.dialog_state import clear_dialog_state, get_dialog
 from components.logistica.formatters import DISPATCH_STATUS_LABELS
-from components.logistica.operation_tables import weighings_view_df
+from components.logistica.operation_tables import weighings_view_column_config, weighings_view_df
 from services.logistica_client import LogisticsApiError, LogisticsClient
 
 client = LogisticsClient()
@@ -48,7 +48,7 @@ def _view(scope: str, load_id: int) -> None:
     )
 
     st.markdown("##### Pesagens")
-    st.dataframe(weighings_view_df(weighings), use_container_width=True, hide_index=True)
+    st.dataframe(weighings_view_df(weighings), hide_index=True, column_config=weighings_view_column_config())
 
     st.markdown("##### Expedicao")
     if dispatch is None:

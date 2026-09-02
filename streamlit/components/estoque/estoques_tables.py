@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import streamlit as st
 
 
 def estoques_df(estoques) -> pd.DataFrame:
@@ -18,3 +19,10 @@ def estoques_df(estoques) -> pd.DataFrame:
             for e in estoques
         ]
     )
+
+
+def estoques_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "Local de armazenamento": st.column_config.TextColumn("Local de armazenamento", pinned=True),
+    }

@@ -1,6 +1,39 @@
 [theme]
 primaryColor = "#245C53"
 linkColor = "#2F8F83"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap"
+baseFontSize = 15
+baseFontWeight = 400
+headingFontWeights = [700, 700, 600, 600, 600, 500]
+linkUnderline = false
+baseRadius = "10px"
+buttonRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = true
+
+# Series colors for Altair/Vega-Lite charts across the whole app.
+chartCategoricalColors = [
+    "#245C53",
+    "#C9861E",
+    "#4B7BEC",
+    "#8E5FD1",
+    "#2F8F83",
+    "#D1495B",
+    "#5A6B57",
+]
+chartSequentialColors = [
+    "#EAF3F1",
+    "#CFE6E1",
+    "#AED9D0",
+    "#87C8BB",
+    "#5FB6A6",
+    "#3EA292",
+    "#2F8F83",
+    "#245C53",
+    "#1A453E",
+    "#122F2A",
+]
 
 [theme.light]
 primaryColor = "#245C53"
@@ -9,6 +42,24 @@ secondaryBackgroundColor = "#FFFFFF"
 textColor = "#1F2937"
 linkColor = "#2F8F83"
 borderColor = "#D6DBE1"
+codeBackgroundColor = "#EEF1F4"
+dataframeBorderColor = "#D6DBE1"
+dataframeHeaderBackgroundColor = "#EAF0EE"
+greenColor = "#1B7A4B"
+greenBackgroundColor = "#E1F3E8"
+greenTextColor = "#0F5C38"
+redColor = "#C23B3B"
+redBackgroundColor = "#FBE7E7"
+redTextColor = "#8E2222"
+orangeColor = "#B5791A"
+orangeBackgroundColor = "#FBEED9"
+orangeTextColor = "#8A5A0F"
+yellowColor = "#B99A0C"
+blueColor = "#3462C9"
+blueBackgroundColor = "#E4EBFA"
+blueTextColor = "#22408F"
+violetColor = "#7A4FC2"
+grayColor = "#5B6672"
 
 [theme.light.sidebar]
 primaryColor = "#2F8F83"
@@ -19,12 +70,30 @@ linkColor = "#D1E7E3"
 borderColor = "#2B5D56"
 
 [theme.dark]
-primaryColor = "#2F8F83"
+primaryColor = "#4DB6AC"
 backgroundColor = "#0F1720"
 secondaryBackgroundColor = "#1B2730"
 textColor = "#F9FAFB"
 linkColor = "#4DB6AC"
 borderColor = "#34424D"
+codeBackgroundColor = "#182029"
+dataframeBorderColor = "#34424D"
+dataframeHeaderBackgroundColor = "#20303A"
+greenColor = "#4ADE94"
+greenBackgroundColor = "#123024"
+greenTextColor = "#7CF0B2"
+redColor = "#F0716C"
+redBackgroundColor = "#33191A"
+redTextColor = "#FCA5A1"
+orangeColor = "#E3A857"
+orangeBackgroundColor = "#33260F"
+orangeTextColor = "#F3C583"
+yellowColor = "#E8D34D"
+blueColor = "#6FA0F5"
+blueBackgroundColor = "#152238"
+blueTextColor = "#A9C4F7"
+violetColor = "#B79BF0"
+grayColor = "#9AA6B2"
 
 [theme.dark.sidebar]
 primaryColor = "#4DB6AC"

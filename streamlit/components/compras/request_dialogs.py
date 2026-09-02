@@ -25,7 +25,7 @@ from components.compras.request_items_editor import (
     request_items_data_editor,
     request_rows_to_items,
 )
-from components.compras.request_tables import request_items_view_df
+from components.compras.request_tables import request_items_view_column_config, request_items_view_df
 from components.shared.screens import toast_error, toast_ok
 from services.compras_client import PurchasesClient
 
@@ -169,7 +169,7 @@ def _dialog_view_request(client: PurchasesClient, request_id: int) -> None:
     if request.id_pedido:
         st.info(f"Pedido gerado: #{request.id_pedido}")
     st.markdown("##### Itens")
-    st.dataframe(request_items_view_df(items), use_container_width=True, hide_index=True)
+    st.dataframe(request_items_view_df(items), hide_index=True, column_config=request_items_view_column_config())
     _, col_close = st.columns([4, 1])
     with col_close:
         if st.button("Fechar", use_container_width=True):
@@ -230,7 +230,7 @@ def _dialog_edit_request(
         )
     else:
         st.markdown("##### Itens")
-        st.dataframe(request_items_view_df(items), use_container_width=True, hide_index=True)
+        st.dataframe(request_items_view_df(items), hide_index=True, column_config=request_items_view_column_config())
 
     c1, c2, c3 = st.columns(3)
     with c1:

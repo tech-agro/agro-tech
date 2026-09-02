@@ -13,11 +13,32 @@ import streamlit as st
 
 from components.bi import charts
 from components.bi.widgets import download_csv, fmt_brl, fmt_int, fmt_qty
+from components.shared.palette import badge_column, badge_value
 from components.shared.screens import setup_page, toast_error
 from services import producao_client as producao_api
 from services.inteligencia_client import InteligenciaApiError, InteligenciaClient
 
 _TEAL, _AMBER = "#0E8C7D", "#C9861E"
+_SITUACAO_OPTIONS = ["Na meta", "Leve abaixo", "Atenção", "Crítico", "Sem dado"]
+_SITUACAO_TONE = {
+    "Na meta": "green",
+    "Leve abaixo": "blue",
+    "Atenção": "orange",
+    "Crítico": "red",
+    "Sem dado": "gray",
+}
+
+
+def _variacao_situacao(pct: float | None) -> str:
+    if pct is None:
+        return "Sem dado"
+    if pct >= 0:
+        return "Na meta"
+    if pct > -10:
+        return "Leve abaixo"
+    if pct > -20:
+        return "Atenção"
+    return "Crítico"
 _PREFIX = "bi_producao"
 
 
@@ -150,8 +171,9 @@ def _render_visao_geral(todos: list) -> None:
                 f"{atual['safra']} vs. {anterior['safra']}",
                 _fmt_kgha(atual["produtividade_media"]),
                 delta=f"{delta_pct:+.1f}%",
+                border=True,
             )
-        st.metric("Safras com historico", fmt_int(len(linhas)))
+        st.metric("Safras com historico", fmt_int(len(linhas)), border=True)
 
 
 def _render_custo_eficiencia(itens: list, id_safra: int | None, id_talhao: int | None) -> None:
@@ -179,8 +201,8 @@ def _render_custo_eficiencia(itens: list, id_safra: int | None, id_talhao: int |
                 "Talhao": i.talhao_nome,
                 "Safra": i.safra_nome,
                 "Custo total (R$)": custo_total,
-                "R$/kg": (custo_total / colhido) if colhido else None,
-                "R$/ha": (custo_total / area) if area else None,
+                "R$/kg": round(custo_total / colhido, 2) if colhido else None,
+                "R$/ha": round(custo_total / area, 2) if area else None,
                 "Realizado (kg/ha)": (
                     float(i.produtividade_realizada) if i.produtividade_realizada is not None else None
                 ),
@@ -192,7 +214,34 @@ def _render_custo_eficiencia(itens: list, id_safra: int | None, id_talhao: int |
         return
 
     df = pd.DataFrame(linhas)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    for col in ("Custo total (R$)", "R$/kg", "R$/ha", "Realizado (kg/ha)"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # This Streamlit build renders NaN in a NumberColumn as the literal text
+    # "None" instead of a blank cell, regardless of `format`. Pre-format
+    # these columns as text (with an em dash for missing values) so the
+    # table stays readable; keep `df` itself numeric for the chart below.
+    display_df = df.copy()
+    display_df["Custo total (R$)"] = df["Custo total (R$)"].map(lambda v: fmt_brl(v) if pd.notna(v) else "—")
+    display_df["R$/kg"] = df["R$/kg"].map(lambda v: fmt_brl(v) if pd.notna(v) else "—")
+    display_df["R$/ha"] = df["R$/ha"].map(lambda v: fmt_brl(v) if pd.notna(v) else "—")
+    display_df["Realizado (kg/ha)"] = df["Realizado (kg/ha)"].map(lambda v: fmt_qty(v) if pd.notna(v) else "—")
+    st.dataframe(
+        display_df,
+        hide_index=True,
+        column_config={
+            "Talhao": st.column_config.TextColumn("Talhão", pinned=True),
+            "Safra": st.column_config.TextColumn("Safra"),
+            "Custo total (R$)": st.column_config.TextColumn("Custo total (R$)", alignment="right"),
+            "R$/kg": st.column_config.TextColumn(
+                "R$/kg", alignment="right", help="Em branco quando o talhão ainda não teve colheita registrada."
+            ),
+            "R$/ha": st.column_config.TextColumn("R$/ha", alignment="right"),
+            "Realizado (kg/ha)": st.column_config.TextColumn(
+                "Realizado (kg/ha)", alignment="right", help="Em branco quando o talhão ainda não teve colheita registrada."
+            ),
+        },
+    )
 
     com_custo_kg = df.dropna(subset=["R$/kg"])
     if not com_custo_kg.empty:
@@ -270,7 +319,16 @@ def _render_clima_correlacao(todos: list) -> None:
         return
 
     df = pd.DataFrame(linhas)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        df,
+        hide_index=True,
+        column_config={
+            "Safra": st.column_config.TextColumn("Safra", pinned=True),
+            "Precipitacao (mm)": st.column_config.NumberColumn("Precipitação (mm)", format="localized"),
+            "Temperatura (C)": st.column_config.NumberColumn("Temperatura (°C)", format="localized"),
+            "Produtividade media (kg/ha)": st.column_config.NumberColumn("Produtividade média (kg/ha)", format="localized"),
+        },
+    )
 
     com_precip = df.dropna(subset=["Precipitacao (mm)"])
     if len(com_precip) >= 1:
@@ -312,10 +370,10 @@ def _render_cotacao_contexto(itens: list) -> None:
         )
         return
 
-    cols = st.columns(len(encontrados))
-    for col, (cultura, cotacao) in zip(cols, encontrados):
-        unidade = f" / {cotacao.unit}" if cotacao.unit else ""
-        col.metric(cultura, f"{fmt_brl(float(cotacao.price))}{unidade}")
+    with st.container(horizontal=True):
+        for cultura, cotacao in encontrados:
+            unidade = f" / {cotacao.unit}" if cotacao.unit else ""
+            st.metric(cultura, f"{fmt_brl(float(cotacao.price))}{unidade}", border=True)
 
 
 def render() -> None:
@@ -358,13 +416,14 @@ def render() -> None:
     )
     abaixo_meta = sum(1 for i in com_meta_e_realizado if float(i.variacao_percentual) < 0)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Produtividade media realizada", _fmt_kgha(media_realizada))
-    col2.metric(
-        "Variacao media vs. meta",
-        f"{media_variacao:+.1f}%" if media_variacao is not None else "—",
-    )
-    col3.metric("Talhoes abaixo da meta", fmt_int(abaixo_meta))
+    with st.container(horizontal=True):
+        st.metric("Produtividade media realizada", _fmt_kgha(media_realizada), border=True)
+        st.metric(
+            "Variacao media vs. meta",
+            f"{media_variacao:+.1f}%" if media_variacao is not None else "—",
+            border=True,
+        )
+        st.metric("Talhoes abaixo da meta", fmt_int(abaixo_meta), border=True)
 
     st.divider()
 
@@ -418,11 +477,41 @@ def render() -> None:
                 "Variacao (%)": (
                     float(i.variacao_percentual) if i.variacao_percentual is not None else None
                 ),
+                "Situação": badge_value(
+                    _variacao_situacao(
+                        float(i.variacao_percentual) if i.variacao_percentual is not None else None
+                    )
+                ),
             }
             for i in itens
         ]
     )
-    st.dataframe(df_tabela, use_container_width=True, hide_index=True)
+    for col in ("Area (ha)", "Meta (kg/ha)", "Colhido total (kg)", "Realizado (kg/ha)", "Variacao (%)"):
+        df_tabela[col] = pd.to_numeric(df_tabela[col], errors="coerce")
+
+    # This Streamlit build renders NaN in a NumberColumn as the literal text
+    # "None" instead of a blank cell — pre-format the columns that can be
+    # missing (no harvest yet) as text with an em dash; CSV export below
+    # still uses the original numeric `df_tabela`.
+    display_df = df_tabela.copy()
+    display_df["Colhido total (kg)"] = df_tabela["Colhido total (kg)"].map(lambda v: fmt_qty(v) if pd.notna(v) else "—")
+    display_df["Realizado (kg/ha)"] = df_tabela["Realizado (kg/ha)"].map(lambda v: fmt_qty(v) if pd.notna(v) else "—")
+    display_df["Variacao (%)"] = df_tabela["Variacao (%)"].map(lambda v: f"{v:+.1f}%" if pd.notna(v) else "—")
+    st.dataframe(
+        display_df,
+        hide_index=True,
+        column_config={
+            "Talhao": st.column_config.TextColumn("Talhão", pinned=True),
+            "Safra": st.column_config.TextColumn("Safra"),
+            "Cultura": st.column_config.TextColumn("Cultura"),
+            "Situação": badge_column("Situação", _SITUACAO_OPTIONS, _SITUACAO_TONE, width="medium", pinned=True),
+            "Area (ha)": st.column_config.NumberColumn("Área (ha)", format="localized"),
+            "Meta (kg/ha)": st.column_config.NumberColumn("Meta (kg/ha)", format="localized"),
+            "Colhido total (kg)": st.column_config.TextColumn("Colhido total (kg)", alignment="right"),
+            "Realizado (kg/ha)": st.column_config.TextColumn("Realizado (kg/ha)", alignment="right"),
+            "Variacao (%)": st.column_config.TextColumn("Variação vs. meta (%)", alignment="right"),
+        },
+    )
     download_csv(df_tabela, filename="produtividade.csv", key=f"{_PREFIX}_csv")
 
     criticos = [i for i in itens if i.variacao_percentual is not None and i.variacao_percentual <= -20]

@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 import pandas as pd
+import streamlit as st
 
-from components.compras.formatters import PURCHASE_TYPE_LABELS, STATUS_LABELS
+from components.compras.formatters import (
+    ORDER_STATUS_OPTIONS,
+    ORDER_STATUS_TONE,
+    PURCHASE_TYPE_LABELS,
+    order_status_label,
+)
+from components.shared.palette import badge_column, badge_value
 
 
 def orders_df(orders) -> pd.DataFrame:
@@ -18,12 +25,22 @@ def orders_df(orders) -> pd.DataFrame:
                 "Tipo": PURCHASE_TYPE_LABELS.get(
                     o.tipo_compra, getattr(o.tipo_compra, "value", "Insumo")
                 ),
-                "Data": o.data_pedido.isoformat() if o.data_pedido else "",
-                "Status": STATUS_LABELS.get(o.status, o.status.value),
+                "Data": o.data_pedido,
+                "Status": badge_value(order_status_label(o.status)),
             }
             for o in orders
         ]
     )
+
+
+def orders_column_config() -> dict:
+    return {
+        "ID": st.column_config.NumberColumn("ID", format="%d", pinned=True, width="small"),
+        "Fornecedor": st.column_config.TextColumn("Fornecedor", pinned=True),
+        "Tipo": st.column_config.TextColumn("Tipo"),
+        "Data": st.column_config.DateColumn("Data do pedido", format="DD/MM/YYYY"),
+        "Status": badge_column("Status", ORDER_STATUS_OPTIONS, ORDER_STATUS_TONE, width="medium"),
+    }
 
 
 def items_view_df(items) -> pd.DataFrame:
@@ -50,3 +67,14 @@ def items_view_df(items) -> pd.DataFrame:
             for i in items
         ]
     )
+
+
+def items_view_column_config() -> dict:
+    return {
+        "ID produto": st.column_config.NumberColumn("ID produto", format="%d"),
+        "Produto": st.column_config.TextColumn("Produto", pinned=True),
+        "Quantidade": st.column_config.NumberColumn("Quantidade", format="localized"),
+        "Unidade de medida": st.column_config.TextColumn("Unidade"),
+        "Valor unitario": st.column_config.NumberColumn("Valor unitário (R$)", format="localized"),
+        "Subtotal": st.column_config.NumberColumn("Subtotal (R$)", format="localized"),
+    }
